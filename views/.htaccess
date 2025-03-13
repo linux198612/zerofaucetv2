@@ -1,0 +1,5 @@
+# Prevent access to PHP files in includes and templates
+<Files "*.php">
+    Order Deny,Allow
+    Deny from all
+</Files>

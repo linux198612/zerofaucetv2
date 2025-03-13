@@ -1,0 +1,11 @@
+RewriteEngine On
+
+# Ne írja át a fájlokat és könyvtárakat
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Átirányít minden kérést az index.php-re, kivéve a fájl- és könyvtárneveket
+RewriteRule ^([^/]+)/?$ index.php?page=$1 [QSA,L]
+
+# Shortlink "viewed" paraméter átirányítása
+RewriteRule ^shortlink/viewed/([a-zA-Z0-9]+)$ index.php?page=shortlink&viewed=$1 [L,QSA]
