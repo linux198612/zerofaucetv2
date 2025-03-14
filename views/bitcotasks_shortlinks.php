@@ -1,6 +1,5 @@
 <?php
 
-
 // Inicializálás
 $user = new User($mysqli, $user['id']);
 $bitcotasksSL = new BitcotasksShortlinks($mysqli, $user, $config);

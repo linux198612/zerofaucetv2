@@ -14,6 +14,7 @@ if (isset($_GET['withdr'])) {
     $withdrawRequest = htmlspecialchars($_GET['withdr'], ENT_QUOTES, 'UTF-8');
 
     if ($withdrawRequest === "fp") {
+        Core::checkCsrfToken(); // ✅ CSRF védelem
         $withdrawResult = $withdraw->requestWithdrawal();
         $_SESSION['alertMessage'] = Core::alert($withdrawResult['success'] ? "success" : "danger", $withdrawResult['message']);
         header("Location: withdraw"); // Redirect, hogy frissítse az oldalt és megjelenjen az üzenet
@@ -30,6 +31,17 @@ include("header.php");
             <?= $alertMessage; ?>
         </div>
     <?php endif; ?>
+    <div class="alert alert-warning d-flex align-items-center" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        <div>
+            <strong>⚠ Important Withdrawal Notice ⚠</strong><br>
+            Due to ongoing security investigations, withdrawals are currently set to manual processing. <br>
+            Please be assured that your funds are safe and secure. <br>
+            We appreciate your patience and understanding during this time.
+           
+        </div>
+    </div>
+
     <div class="row">
         <div class="col-md-6">
             <div class="card shadow-sm h-100">
@@ -76,7 +88,7 @@ function startWithdraw() {
     let button = document.getElementById("withdraw-btn");
     button.innerHTML = "Processing...";
     button.disabled = true;
-    window.location.href = "withdraw?withdr=fp";
+    window.location.href = "withdraw?withdr=fp&csrf_token=<?= Core::generateCsrfToken(); ?>";
 }
 </script>
                 <div class="card-body d-flex flex-column justify-content-center text-center">

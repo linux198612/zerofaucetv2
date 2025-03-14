@@ -33,7 +33,7 @@ include("header.php");
     <?php endif; ?>
 
     <h1>AutoFaucet</h1>
-    <p>Earn free ZER automatically every <?= $timeAuto ?> seconds.</p>
+    <p>Earn free ZER automatically every <?= Core::sanitizeOutput($timeAuto) ?> seconds.</p>
 
 <div class="row">
         <div class="col-12 col-md-3 text-center p-3">
@@ -43,9 +43,9 @@ include("header.php");
               <div class="row">
         <div class="col-md-6">
             <div class="card">
-                <div class="card-header">Reward per <?= $timeAuto ?> seconds</div>
+                <div class="card-header">Reward per <?= Core::sanitizeOutput($timeAuto) ?> seconds</div>
                 <div class="card-body">
-                    <p class="card-text"><?= $rewardAmount ?> ZER</p>
+                    <p class="card-text"><?= Core::sanitizeOutput($rewardAmount) ?> ZER</p>
                 </div>
             </div>
         </div>
@@ -53,7 +53,7 @@ include("header.php");
             <div class="card">
                 <div class="card-header">Energy Reward</div>
                 <div class="card-body">
-                    <p class="card-text"><?= $energyReward ?> Energy</p>
+                    <p class="card-text"><?= Core::sanitizeOutput($energyReward) ?> Energy</p>
                 </div>
             </div>
         </div>
@@ -61,7 +61,7 @@ include("header.php");
 
     <div class="progress mt-4">
         <div id="progress-bar" class="progress-bar" role="progressbar" style="width: 100%;" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100">
-            <?= $timeAuto ?> seconds
+            <?= Core::sanitizeOutput($timeAuto) ?> seconds
         </div>
     </div>
 
@@ -79,8 +79,6 @@ include("header.php");
     </div>
 
 </div>
-
-
 
 <script>
 document.addEventListener("DOMContentLoaded", function() {

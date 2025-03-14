@@ -30,6 +30,7 @@ class Router {
     }
 
     public function getPageTitle($page) {
+        $page = htmlspecialchars($page, ENT_QUOTES, 'UTF-8');
         if (array_key_exists($page, $this->publicPages)) {
             return $this->publicPages[$page];
         } elseif ($this->user && array_key_exists($page, $this->loggedInPages)) {
@@ -39,6 +40,7 @@ class Router {
     }
 
     public function getPage($page) {
+        $page = htmlspecialchars($page, ENT_QUOTES, 'UTF-8');
         // Ha publikus oldal, betöltjük
         if (array_key_exists($page, $this->publicPages)) {
             return "views/{$page}.php";

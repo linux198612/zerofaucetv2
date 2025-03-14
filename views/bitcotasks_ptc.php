@@ -1,7 +1,9 @@
 <?php
 
-
 // Inicializálás
+if (!isset($user['id'])) {
+    die('User ID is not set.');
+}
 $user = new User($mysqli, $user['id']);
 $bitcotasks = new BitcotasksPTC($mysqli, $user, $config);
 
@@ -21,6 +23,9 @@ if (isset($campaignsData['status']) && $campaignsData['status'] == '200') {
 
 // USD és ZER konverzió
 $currencyValue = $config->get('currency_value');
+if ($currencyValue == 0) {
+    die('Currency value cannot be zero.');
+}
 $totalRewardsInUSD = $totalRewards;
 $totalRewardsInZero = $totalRewardsInUSD / $currencyValue;
 
@@ -53,6 +58,9 @@ include("header.php");
                 $rewardInUSD = $campaign['reward'];
                 $rewardInZero = $rewardInUSD / $currencyValue;
                 $campaignUrl = filter_var($campaign['url'], FILTER_VALIDATE_URL) ? $campaign['url'] : '#'; // ✅ Biztonságos URL ellenőrzés
+                if ($campaignUrl === '#') {
+                    $error = 'Invalid campaign URL.';
+                }
             ?>
                 <div class="col campaign-card" id="campaign-<?= Core::sanitizeOutput($index); ?>">
                     <div class="card h-100">
