@@ -316,30 +316,38 @@ $getwebsite_url = $mysqli->query("SELECT value FROM settings WHERE name = 'websi
                         if ($action == "approve") {
                             // Az új státusz "Paid"
                             $status = "Paid";
-                
+                    
+                            // Lekérdezzük az address mezőt az users táblából
+                            $stmt = $mysqli->prepare("SELECT address FROM users WHERE id = ?");
+                            $stmt->bind_param("i", $userid);
+                            $stmt->execute();
+                            $stmt->bind_result($address);
+                            $stmt->fetch();
+                            $stmt->close();
+                    
                             // API hívás a kriptovaluta kifizetéshez
                             $stmt = $mysqli->prepare("SELECT value FROM settings WHERE name = 'zerochain_api' LIMIT 1");
                             $stmt->execute();
                             $stmt->bind_result($ZC_API_Key);
                             $stmt->fetch();
                             $stmt->close();
-                
+                    
                             $stmt = $mysqli->prepare("SELECT value FROM settings WHERE name = 'zerochain_privatekey' LIMIT 1");
                             $stmt->execute();
                             $stmt->bind_result($privateKey);
                             $stmt->fetch();
                             $stmt->close();
-                
+                    
                             // API hívás a kifizetéshez
                             $result = file_get_contents("https://zerochain.info/api/rawtxbuild/{$privateKey}/{$address}/{$amount}/0/1/{$ZC_API_Key}");
-                
+                    
                             $TxID = "";
                             if (strpos($result, '"txid":"') !== false) {
                                 $pieces = explode('"txid":"', $result);
                                 $pieces = explode('"', $pieces[1]);
                                 $TxID = $pieces[0];
                             }
-                
+                    
                             // Ha a tranzakció sikerült, frissítjük a kifizetést
                             if ($TxID != "") {
                                 // Frissítjük a kifizetés státuszát, és elmentjük a tranzakció ID-t
@@ -353,7 +361,7 @@ $getwebsite_url = $mysqli->query("SELECT value FROM settings WHERE name = 'websi
                                 $stmt->bind_param("di", $amount, $userid);
                                 $stmt->execute();
                                 $stmt->close();
-                
+                    
                                 echo "Withdrawal approved and payment sent. TXID: " . $TxID;
                             } else {
                                 // Ha a tranzakció nem sikerült, akkor az admin jelzi
@@ -362,13 +370,13 @@ $getwebsite_url = $mysqli->query("SELECT value FROM settings WHERE name = 'websi
                         } elseif ($action == "reject") {
                             // Ha elutasítja, akkor a státusz "Rejected"
                             $status = "Rejected";
-                
+                    
                             // Frissítjük a státuszt a withdrawals táblában
                             $stmt = $mysqli->prepare("UPDATE withdrawals SET status = ? WHERE id = ?");
                             $stmt->bind_param("si", $status, $withdrawId);
                             $stmt->execute();
                             $stmt->close();
-                
+                    
                             // Visszaadjuk a felhasználónak a kifizetett összeget az egyenlegéhez
                             $stmt = $mysqli->prepare("SELECT balance FROM users WHERE id = ?");
                             $stmt->bind_param("i", $userid);
@@ -376,14 +384,14 @@ $getwebsite_url = $mysqli->query("SELECT value FROM settings WHERE name = 'websi
                             $stmt->bind_result($balance);
                             $stmt->fetch();
                             $stmt->close();
-                
+                    
                             // A felhasználó egyenlegének frissítése
                             $newBalance = $balance + $amount;
                             $stmt = $mysqli->prepare("UPDATE users SET balance = ? WHERE id = ?");
                             $stmt->bind_param("di", $newBalance, $userid);
                             $stmt->execute();
                             $stmt->close();
-                
+                    
                             echo "Withdrawal rejected and the amount has been refunded to the user's balance.";
                         } else {
                             die("Invalid action");
