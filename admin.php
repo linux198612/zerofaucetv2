@@ -295,151 +295,150 @@ $getwebsite_url = $mysqli->query("SELECT value FROM settings WHERE name = 'websi
 <?php
             break;
 
-case 'manual_withdraw':
+            case 'manual_withdraw':
 
-// Lekérdezzük az ID-t és az akciót (approve vagy reject)
-if (isset($_GET['id']) && isset($_GET['action'])) {
-    $withdrawId = $_GET['id'];
-    $action = $_GET['action'];
 
-    // Lekérdezzük a kifizetés adatait
-    $stmt = $mysqli->prepare("SELECT userid, amount, txid, address, status FROM withdraw_history WHERE id = ?");
-    $stmt->bind_param("i", $withdrawId);
-    $stmt->execute();
-    $stmt->bind_result($userid, $amount, $txid, $address, $currentStatus);
-    $stmt->fetch();
-    $stmt->close();
-
-    // Ha a státusz még nem lett módosítva (pl. Pending), akkor hajtódik végre a kifizetés
-    if ($currentStatus == 'Pending') {
-        if ($action == "approve") {
-            // Az új státusz "Paid"
-            $status = "Paid";
-
-            // API hívás a kriptovaluta kifizetéshez
-            $stmt = $mysqli->prepare("SELECT value FROM settings WHERE name = 'zerochain_api' LIMIT 1");
-            $stmt->execute();
-            $stmt->bind_result($ZC_API_Key);
-            $stmt->fetch();
-            $stmt->close();
-
-            $stmt = $mysqli->prepare("SELECT value FROM settings WHERE name = 'zerochain_privatekey' LIMIT 1");
-            $stmt->execute();
-            $stmt->bind_result($privateKey);
-            $stmt->fetch();
-            $stmt->close();
-
-            // API hívás a kifizetéshez
-            $result = file_get_contents("https://zerochain.info/api/rawtxbuild/{$privateKey}/{$address}/{$amount}/0/1/{$ZC_API_Key}");
-
-            $TxID = "";
-            if (strpos($result, '"txid":"') !== false) {
-                $pieces = explode('"txid":"', $result);
-                $pieces = explode('"', $pieces[1]);
-                $TxID = $pieces[0];
-            }
-
-            // Ha a tranzakció sikerült, frissítjük a kifizetést
-            if ($TxID != "") {
-                // Frissítjük a kifizetés státuszát, és elmentjük a tranzakció ID-t
-                $stmt = $mysqli->prepare("UPDATE withdraw_history SET status = ?, txid = ? WHERE id = ?");
-                $stmt->bind_param("ssi", $status, $TxID, $withdrawId);
-                $stmt->execute();
-                $stmt->close();
+                // Lekérdezzük az ID-t és az akciót (approve vagy reject)
+                if (isset($_GET['id']) && isset($_GET['action'])) {
+                    $withdrawId = $_GET['id'];
+                    $action = $_GET['action'];
                 
-                 // **Összes kifizetés frissítése**
-                $stmt = $mysqli->prepare("UPDATE users SET total_withdrawals = total_withdrawals + ? WHERE id = ?");
-                $stmt->bind_param("di", $amount, $userid);
+                    // Lekérdezzük a kifizetés adatait
+                    $stmt = $mysqli->prepare("SELECT user_id, amount, txid, status FROM withdrawals WHERE id = ?");
+                    $stmt->bind_param("i", $withdrawId);
+                    $stmt->execute();
+                    $stmt->bind_result($userid, $amount, $txid, $currentStatus);
+                    $stmt->fetch();
+                    $stmt->close();
+                
+                    // Ha a státusz még nem lett módosítva (pl. Pending), akkor hajtódik végre a kifizetés
+                    if ($currentStatus == 'Pending') {
+                        if ($action == "approve") {
+                            // Az új státusz "Paid"
+                            $status = "Paid";
+                
+                            // API hívás a kriptovaluta kifizetéshez
+                            $stmt = $mysqli->prepare("SELECT value FROM settings WHERE name = 'zerochain_api' LIMIT 1");
+                            $stmt->execute();
+                            $stmt->bind_result($ZC_API_Key);
+                            $stmt->fetch();
+                            $stmt->close();
+                
+                            $stmt = $mysqli->prepare("SELECT value FROM settings WHERE name = 'zerochain_privatekey' LIMIT 1");
+                            $stmt->execute();
+                            $stmt->bind_result($privateKey);
+                            $stmt->fetch();
+                            $stmt->close();
+                
+                            // API hívás a kifizetéshez
+                            $result = file_get_contents("https://zerochain.info/api/rawtxbuild/{$privateKey}/{$address}/{$amount}/0/1/{$ZC_API_Key}");
+                
+                            $TxID = "";
+                            if (strpos($result, '"txid":"') !== false) {
+                                $pieces = explode('"txid":"', $result);
+                                $pieces = explode('"', $pieces[1]);
+                                $TxID = $pieces[0];
+                            }
+                
+                            // Ha a tranzakció sikerült, frissítjük a kifizetést
+                            if ($TxID != "") {
+                                // Frissítjük a kifizetés státuszát, és elmentjük a tranzakció ID-t
+                                $stmt = $mysqli->prepare("UPDATE withdrawals SET status = ?, txid = ? WHERE id = ?");
+                                $stmt->bind_param("ssi", $status, $TxID, $withdrawId);
+                                $stmt->execute();
+                                $stmt->close();
+                                
+                                // **Összes kifizetés frissítése**
+                                $stmt = $mysqli->prepare("UPDATE users SET total_withdrawals = total_withdrawals + ? WHERE id = ?");
+                                $stmt->bind_param("di", $amount, $userid);
+                                $stmt->execute();
+                                $stmt->close();
+                
+                                echo "Withdrawal approved and payment sent. TXID: " . $TxID;
+                            } else {
+                                // Ha a tranzakció nem sikerült, akkor az admin jelzi
+                                echo "Error occurred while processing the transaction.";
+                            }
+                        } elseif ($action == "reject") {
+                            // Ha elutasítja, akkor a státusz "Rejected"
+                            $status = "Rejected";
+                
+                            // Frissítjük a státuszt a withdrawals táblában
+                            $stmt = $mysqli->prepare("UPDATE withdrawals SET status = ? WHERE id = ?");
+                            $stmt->bind_param("si", $status, $withdrawId);
+                            $stmt->execute();
+                            $stmt->close();
+                
+                            // Visszaadjuk a felhasználónak a kifizetett összeget az egyenlegéhez
+                            $stmt = $mysqli->prepare("SELECT balance FROM users WHERE id = ?");
+                            $stmt->bind_param("i", $userid);
+                            $stmt->execute();
+                            $stmt->bind_result($balance);
+                            $stmt->fetch();
+                            $stmt->close();
+                
+                            // A felhasználó egyenlegének frissítése
+                            $newBalance = $balance + $amount;
+                            $stmt = $mysqli->prepare("UPDATE users SET balance = ? WHERE id = ?");
+                            $stmt->bind_param("di", $newBalance, $userid);
+                            $stmt->execute();
+                            $stmt->close();
+                
+                            echo "Withdrawal rejected and the amount has been refunded to the user's balance.";
+                        } else {
+                            die("Invalid action");
+                        }
+                    } else {
+                        echo "This withdrawal has already been processed.";
+                    }
+                }
+                
+                $stmt = $mysqli->prepare("SELECT id, amount, txid, requested_at FROM withdrawals WHERE status = 'Pending' ORDER BY requested_at DESC");
                 $stmt->execute();
-                $stmt->close();
-
-                echo "Withdrawal approved and payment sent. TXID: " . $TxID;
-            } else {
-                // Ha a tranzakció nem sikerült, akkor az admin jelzi
-                echo "Error occurred while processing the transaction.";
-            }
-        } elseif ($action == "reject") {
-            // Ha elutasítja, akkor a státusz "Rejected"
-            $status = "Rejected";
-
-            // Frissítjük a státuszt a withdraw_history táblában
-            $stmt = $mysqli->prepare("UPDATE withdraw_history SET status = ? WHERE id = ?");
-            $stmt->bind_param("si", $status, $withdrawId);
-            $stmt->execute();
-            $stmt->close();
-
-            // Visszaadjuk a felhasználónak a kifizetett összeget az egyenlegéhez
-            $stmt = $mysqli->prepare("SELECT balance FROM users WHERE id = ?");
-            $stmt->bind_param("i", $userid);
-            $stmt->execute();
-            $stmt->bind_result($balance);
-            $stmt->fetch();
-            $stmt->close();
-
-            // A felhasználó egyenlegének frissítése
-            $newBalance = $balance + $amount;
-            $stmt = $mysqli->prepare("UPDATE users SET balance = ? WHERE id = ?");
-            $stmt->bind_param("di", $newBalance, $userid);
-            $stmt->execute();
-            $stmt->close();
-
-            echo "Withdrawal rejected and the amount has been refunded to the user's balance.";
-        } else {
-            die("Invalid action");
-        }
-    } else {
-        echo "This withdrawal has already been processed.";
-    }
-}
-
-
-
-$stmt = $mysqli->prepare("SELECT id, amount, txid, timestamp FROM withdraw_history WHERE status = 'Pending' ORDER BY timestamp DESC");
-    $stmt->execute();
-    $result = $stmt->get_result();
-
-    if ($result->num_rows > 0) {
-        echo '<h2>Pending Withdrawals</h2>';
-        echo '<div class="table-responsive">';
-        echo '<table class="table table-bordered">';
-        echo '<thead>';
-        echo '<tr>';
-        echo '<th>ID</th>';
-        echo '<th>Amount</th>';
-        echo '<th>Date</th>';
-        echo '<th>Transaction ID</th>';
-        echo '<th>Action</th>';
-        echo '</tr>';
-        echo '</thead>';
-        echo '<tbody>';
-
-        while ($row = $result->fetch_assoc()) {
-            $id = $row['id'];
-            $amount = $row['amount'];
-            $txID = $row['txid'];
-            $timestamp = date("d-m-Y H:i:s", $row['timestamp']);
-            echo '<tr>';
-            echo "<td>{$id}</td>";
-            echo "<td>{$amount} ZER</td>";
-            echo "<td>{$timestamp}</td>";
-            echo "<td><a href=\"https://zerochain.info/tx/".$txID."\" target=\"_blank\"><font color=\"#369cf6\">".$txID."</font></a></td>";
-            echo "<td>
-                    <a href=\"admin.php?page=manual_withdraw&id={$id}&action=approve\" class=\"btn btn-success\">Approve</a>
-                    <a href=\"admin.php?page=manual_withdraw&id={$id}&action=reject\" class=\"btn btn-danger\">Reject</a>
-                  </td>";
-            echo '</tr>';
-        }
-
-        echo '</tbody>';
-        echo '</table>';
-        echo '</div>';
-
-        $stmt->close();
-    } else {
-        echo "No pending withdrawals found.";
-    }
-
-break;            
+                $result = $stmt->get_result();
+                
+                if ($result->num_rows > 0) {
+                    echo '<h2>Pending Withdrawals</h2>';
+                    echo '<div class="table-responsive">';
+                    echo '<table class="table table-bordered">';
+                    echo '<thead>';
+                    echo '<tr>';
+                    echo '<th>ID</th>';
+                    echo '<th>Amount</th>';
+                    echo '<th>Date</th>';
+                    echo '<th>Transaction ID</th>';
+                    echo '<th>Action</th>';
+                    echo '</tr>';
+                    echo '</thead>';
+                    echo '<tbody>';
+                
+                    while ($row = $result->fetch_assoc()) {
+                        $id = $row['id'];
+                        $amount = $row['amount'];
+                        $txID = $row['txid'];
+                        $timestamp = date("d-m-Y H:i:s", strtotime($row['requested_at']));
+                        echo '<tr>';
+                        echo "<td>{$id}</td>";
+                        echo "<td>{$amount} ZER</td>";
+                        echo "<td>{$timestamp}</td>";
+                        echo "<td><a href=\"https://zerochain.info/tx/".$txID."\" target=\"_blank\"><font color=\"#369cf6\">".$txID."</font></a></td>";
+                        echo "<td>
+                                <a href=\"admin.php?page=manual_withdraw&id={$id}&action=approve\" class=\"btn btn-success\">Approve</a>
+                                <a href=\"admin.php?page=manual_withdraw&id={$id}&action=reject\" class=\"btn btn-danger\">Reject</a>
+                              </td>";
+                        echo '</tr>';
+                    }
+                
+                    echo '</tbody>';
+                    echo '</table>';
+                    echo '</div>';
+                
+                    $stmt->close();
+                } else {
+                    echo "No pending withdrawals found.";
+                }
+                
+                break;
 
 case 'energyshop':
     echo "<h1>Energy Shop Settings</h1>";
