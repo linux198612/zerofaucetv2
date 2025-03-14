@@ -3,7 +3,7 @@
 class Core {
     private $mysqli;
     private $sessionTimeout = 1800; // 30 perc session timeout
-    private $version = "1.30.1";
+    private $version = "1.30.2";
     private $config;
 
     public function __construct($mysqli) {

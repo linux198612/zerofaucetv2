@@ -1,0 +1,6 @@
+Version: 1.30.2
+- withdraw.php security fixed
+
+Version 1.30.1:
+
+Update admin.php fixing manual withdraw.

@@ -1,12 +1,10 @@
 <?php
 
-
 // Inicializálás
 $user = new User($mysqli, $user['id']);
 $withdraw = new Withdraw($mysqli, $user, $config);
 
 $alertMessage = ""; // Üzenet tárolása
-
 
 // Ellenőrizzük, hogy van-e sessionban tárolt üzenet
 $alertMessage = isset($_SESSION['alertMessage']) ? $_SESSION['alertMessage'] : "";
@@ -32,17 +30,6 @@ include("header.php");
             <?= $alertMessage; ?>
         </div>
     <?php endif; ?>
-    <div class="alert alert-warning d-flex align-items-center" role="alert">
-    <i class="bi bi-exclamation-triangle-fill me-2"></i>
-    <div>
-        <strong>⚠ Important Withdrawal Notice ⚠</strong><br>
-        When submitting a withdrawal request, if the process takes longer than usual, please <strong>do not navigate away</strong>. Wait to see what happens. <br>
-        If you receive an error message, <strong>try again later</strong>. You can attempt multiple times throughout the day.<br>
-        The <strong>ZeroChain.info server is often overloaded</strong>, which may cause withdrawals to temporarily fail. This is <strong>not an issue on our end</strong>. <br>
-        Thank you for your patience! 🚀
-    </div>
-</div>
-
     <div class="row">
         <div class="col-md-6">
             <div class="card shadow-sm h-100">
@@ -53,26 +40,26 @@ include("header.php");
                     <h4 class="text-muted">Balance</h4>
                     <p class="lead font-weight-bold"><?= Core::sanitizeOutput($withdraw->getUserBalance()) ?> ZER</p>
 
-							<?php
-							$balance = $withdraw->getUserBalance() * 100000000; // ZER -> Zatoshi konvertálás
-							$minWithdraw = $withdraw->getMinWithdraw(); // Min withdraw már Zatoshi
-							
-							// Ellenőrizzük, hogy ne legyen 0-val osztás!
-							if ($minWithdraw > 0) {
-							    $progressWithdraw = min(100, max(0, ($balance / $minWithdraw) * 100));
-							} else {
-							    $progressWithdraw = 0; // Ha a minimum withdraw 0 lenne, akkor inkább 0% marad
-							}
-							?>
-							<div class="progress mt-3" style="height: 18px; border-radius: 8px; overflow: hidden;">
-							    <div class="progress-bar bg-success progress-bar-striped progress-bar-animated" role="progressbar"
-							        style="width: <?= $progressWithdraw ?>%;" 
-							        aria-valuenow="<?= $progressWithdraw ?>" 
-							        aria-valuemin="0" 
-							        aria-valuemax="100">
-							        <?= round($progressWithdraw, 2) ?>%
-							    </div>
-							</div>
+                    <?php
+                    $balance = $withdraw->getUserBalance() * 100000000; // ZER -> Zatoshi konvertálás
+                    $minWithdraw = $withdraw->getMinWithdraw(); // Min withdraw már Zatoshi
+                    
+                    // Ellenőrizzük, hogy ne legyen 0-val osztás!
+                    if ($minWithdraw > 0) {
+                        $progressWithdraw = min(100, max(0, ($balance / $minWithdraw) * 100));
+                    } else {
+                        $progressWithdraw = 0; // Ha a minimum withdraw 0 lenne, akkor inkább 0% marad
+                    }
+                    ?>
+                    <div class="progress mt-3" style="height: 18px; border-radius: 8px; overflow: hidden;">
+                        <div class="progress-bar bg-success progress-bar-striped progress-bar-animated" role="progressbar"
+                            style="width: <?= $progressWithdraw ?>%;" 
+                            aria-valuenow="<?= $progressWithdraw ?>" 
+                            aria-valuemin="0" 
+                            aria-valuemax="100">
+                            <?= round($progressWithdraw, 2) ?>%
+                        </div>
+                    </div>
 
                     <p class="mt-3"><strong>Total Withdraw:</strong> <?= Core::sanitizeOutput(number_format($withdraw->getTotalWithdraw(), 8)) ?> ZER</p>
                 </div>
@@ -94,7 +81,7 @@ function startWithdraw() {
 </script>
                 <div class="card-body d-flex flex-column justify-content-center text-center">
                     <p class="mb-3">Minimum withdraw: <strong><?= Core::sanitizeOutput($withdraw->getMinWithdraw()) ?> Zatoshi</strong></p>
-                                        <button id="withdraw-btn" class="btn btn-lg btn-primary <?= $withdraw->canWithdraw() ? '' : 'disabled' ?>" onclick="startWithdraw()">
+                    <button id="withdraw-btn" class="btn btn-lg btn-primary <?= $withdraw->canWithdraw() ? '' : 'disabled' ?>" onclick="startWithdraw()">
                         Withdraw
                     </button>
                 </div>
@@ -171,6 +158,3 @@ function startWithdraw() {
 </style>
 
 <?php include("footer.php"); ?>
-
-
-
