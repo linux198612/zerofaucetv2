@@ -44,13 +44,25 @@ class EnergyShop {
             return ["success" => false, "message" => "Not enough energy!"];
         }
 
-        // Vásárlás végrehajtása (energia levonás, balance növelés)
-        $stmt = $this->mysqli->prepare("UPDATE users SET energy = energy - ?, balance = balance + ? WHERE id = ?");
-        $stmt->bind_param("ddi", $package['energy_cost'], $package['zero_amount'], $userId);
+        // Vásárlás végrehajtása (energia levonás)
+        $stmt = $this->mysqli->prepare("UPDATE users SET energy = energy - ? WHERE id = ?");
+        $stmt->bind_param("di", $package['energy_cost'], $userId);
         $stmt->execute();
         $stmt->close();
 
+        // Felhasználói egyenleg frissítése
+        $this->user->updateBalance($package['zero_amount']);
+
         return ["success" => true, "message" => "Purchase successful! You received {$package['zero_amount']} ZER."];
+    }
+
+    public function isValidPackage($packageId) {
+        $stmt = $this->mysqli->prepare("SELECT COUNT(*) AS cnt FROM energyshop_packages WHERE id = ?");
+        $stmt->bind_param("i", $packageId);
+        $stmt->execute();
+        $result = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        return $result['cnt'] > 0;
     }
 }
 ?>

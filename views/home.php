@@ -15,7 +15,7 @@ if (isset($_GET['ref']) && is_numeric($_GET['ref'])) {
 }
 
 // Statisztikák lekérése (biztonságos SQL)
-$stmt = $mysqli->prepare("SELECT COUNT(id), SUM(total_withdrawals), SUM(balance) + SUM(total_withdrawals) FROM users");
+$stmt = $mysqli->prepare("SELECT COUNT(id) AS user_count, SUM(total_withdrawals) AS total_withdrawn, SUM(balance) + SUM(total_withdrawals) AS total_collected FROM users");
 $stmt->execute();
 $stmt->bind_result($userCount, $totalWithdrawn, $totalCollected);
 $stmt->fetch();

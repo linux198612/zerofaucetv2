@@ -29,6 +29,9 @@ $claimAvailable = $claimCountToday < $dailyLimit;
 $claimMessage = $_SESSION['claim_message'] ?? null;
 unset($_SESSION['claim_message']); // Üzenetet töröljük, hogy ne ismétlődjön frissítéskor
 
+$csrfToken = Core::generateCsrfToken();
+$hcaptchaPubKey = Core::sanitizeOutput($config->get("hcaptcha_pub_key"));
+
 include("header.php");
 ?>
 
@@ -90,10 +93,10 @@ include("header.php");
         <div class="alert alert-warning">Daily limit reached. You can claim again tomorrow.</div>
     <?php else: ?>
         <form method="POST" action="faucet" id="claimForm" <?= $wait > 0 ? 'style="display:none;"' : '' ?>>
-            <input type="hidden" name="csrf_token" value="<?= Core::generateCsrfToken(); ?>"> <!-- ✅ CSRF védelem -->
+            <input type="hidden" name="csrf_token" value="<?= $csrfToken; ?>"> <!-- ✅ CSRF védelem -->
             <div class='form-group text-center'>
                 <script src='https://hcaptcha.com/1/api.js' async defer></script>
-                <div class='h-captcha' data-sitekey='<?= Core::sanitizeOutput($config->get("hcaptcha_pub_key")) ?>'></div>
+                <div class='h-captcha' data-sitekey='<?= $hcaptchaPubKey ?>'></div>
             </div><br>
             <button type='submit' class='btn btn-success' id="claimButton" <?= $wait > 0 ? 'disabled' : '' ?>>Claim</button>
         </form>

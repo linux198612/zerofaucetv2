@@ -12,8 +12,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['packageId'])) {
     Core::checkCsrfToken(); // ✅ CSRF védelem
 
     $packageId = isset($_POST['packageId']) ? (int) $_POST['packageId'] : 0;
-    $claimResult = $energyShop->buyPackage($packageId);
-    $_SESSION['energyshop_message'] = $claimResult;
+    if ($packageId > 0 && $energyShop->isValidPackage($packageId)) { // Ellenőrizzük, hogy a packageId érvényes-e
+        $claimResult = $energyShop->buyPackage($packageId);
+        $_SESSION['energyshop_message'] = $claimResult;
+    } else {
+        $_SESSION['energyshop_message'] = ['success' => false, 'message' => 'Invalid package selected.'];
+    }
 
     header("Location: energyshop");
     exit();

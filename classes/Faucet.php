@@ -132,10 +132,7 @@ public function claimReward() {
     $stmt->close();
 
     // Felhasználói egyenleg, XP és last_claim frissítése
-    $stmt = $this->mysqli->prepare("UPDATE users SET balance = balance + ?, last_claim = ?, xp = xp + ? WHERE id = ?");
-    $stmt->bind_param("diii", $rewardAmount, $timestamp, $xpReward, $userId);
-    $stmt->execute();
-    $stmt->close();
+    $this->user->updateBalance($rewardAmount, $xpReward);
 
     // 🔹 Referral Jutalom kezelése
     $referralPercent = (float)$this->config->get('referral_percent'); // Referral százalék
@@ -153,10 +150,8 @@ public function claimReward() {
         // Ha van ajánló (referrer)
         if ($referrerId) {
             // 🔹 Az ajánló balance-hoz adjuk a jutalmat
-            $stmt = $this->mysqli->prepare("UPDATE users SET balance = balance + ? WHERE id = ?");
-            $stmt->bind_param("di", $referralReward, $referrerId);
-            $stmt->execute();
-            $stmt->close();
+            $referrer = new User($this->mysqli, $this->config, $referrerId);
+            $referrer->updateBalance($referralReward);
 
             // 🔹 A meghívott (user) referral_earnings mezőjébe is mentjük a jutalmat
             $stmt = $this->mysqli->prepare("UPDATE users SET referral_earnings = referral_earnings + ? WHERE id = ?");
@@ -165,6 +160,12 @@ public function claimReward() {
             $stmt->close();
         }
     }
+
+    // Felhasználó last_claim frissítése
+    $stmt = $this->mysqli->prepare("UPDATE users SET last_claim = ? WHERE id = ?");
+    $stmt->bind_param("ii", $timestamp, $userId);
+    $stmt->execute();
+    $stmt->close();
 
     // 🔹 **Frissítjük a User osztály példányát is!**
     $this->user->refreshUserData();

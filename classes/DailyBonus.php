@@ -80,10 +80,7 @@ class DailyBonus {
         $reward = (float) $this->config->get('bonus_reward_coin');
         $xpReward = (int) $this->config->get('bonus_reward_xp');
 
-        $stmt = $this->mysqli->prepare("UPDATE users SET balance = balance + ?, xp = xp + ? WHERE id = ?");
-        $stmt->bind_param("dii", $reward, $xpReward, $userId);
-        $stmt->execute();
-        $stmt->close();
+        $this->user->updateBalance($reward, $xpReward);
 
         // Rögzítjük a claimet
         $stmt = $this->mysqli->prepare("INSERT INTO bonus_history (user_id, bonus_date) VALUES (?, ?)");

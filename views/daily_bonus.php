@@ -10,7 +10,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['claim_bonus'])) {
     Core::checkCsrfToken(); // ✅ CSRF védelem
 
     $hCaptchaResponse = $_POST['h-captcha-response'] ?? null;
-    $claimResult = $dailyBonus->claimBonus(Core::sanitizeOutput($hCaptchaResponse));
+    $claimResult = $dailyBonus->claimBonus($core->sanitizeInput($hCaptchaResponse)); // Input sanitization
     $_SESSION['claim_message'] = $claimResult; // Üzenet mentése SESSION-be
 
     header("Location: daily_bonus");
@@ -31,8 +31,8 @@ include("header.php");
     <h3>Claim Daily Bonus</h3>
 
 <div class="row">
-        <div class="col-12 col-md-3 text-center p-3">
-          
+<div class="col-12 col-md-3 text-center p-3">
+        
         </div>
         <div class="col-12 col-md-6 text-center p-3">
     <?php if ($claimMessage): ?>
@@ -97,8 +97,3 @@ include("header.php");
 
 <?php include("footer.php"); ?>
 <script src="https://js.hcaptcha.com/1/api.js" async defer></script>
-
-
-
-
-

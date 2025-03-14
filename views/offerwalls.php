@@ -1,6 +1,5 @@
 <?php
 
-
 // Inicializálás
 $user = new User($mysqli, $user['id']);
 $offerwalls = new Offerwalls($mysqli, $user, $config);

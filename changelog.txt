@@ -1,3 +1,9 @@
+Version: 1.30.5:
+- security update
+
+Version: 1.30.4:
+- Daily bonus security fixed 
+
 Version: 1.30.3:
 - autofaucet, bitcotasks offerwalls ptc and shortlinks page fixed
 - Router fixed 

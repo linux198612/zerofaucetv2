@@ -1,6 +1,5 @@
 <?php
 
-
 // Inicializálás
 $user = new User($mysqli, $user['id']);
 $shortlink = new Shortlink($mysqli, $user, $config);
@@ -11,10 +10,10 @@ $shortlinkId = filter_input(INPUT_GET, 'visit_shortlink', FILTER_SANITIZE_FULL_S
 if (!empty($shortlinkId)) {
     $visitResult = $shortlink->visitShortlink($shortlinkId);
     if ($visitResult['success']) {
-        header("Location: " . Core::sanitizeOutput($visitResult['redirect_url']));
+        header("Location: " . htmlspecialchars($visitResult['redirect_url'], ENT_QUOTES, 'UTF-8'));
         exit;
     } else {
-        $alertSL = Core::alert("danger", $visitResult['message']);
+        $alertSL = Core::alert("danger", htmlspecialchars($visitResult['message'], ENT_QUOTES, 'UTF-8'));
     }
 }
 
@@ -22,14 +21,14 @@ if (!empty($shortlinkId)) {
 $viewKey = filter_input(INPUT_GET, 'viewed', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
 if (!empty($viewKey)) {
     $rewardResult = $shortlink->rewardShortlink($viewKey);
-    $alertSL = Core::alert($rewardResult['success'] ? "success" : "danger", $rewardResult['message']);
+    $alertSL = Core::alert($rewardResult['success'] ? "success" : "danger", htmlspecialchars($rewardResult['message'], ENT_QUOTES, 'UTF-8'));
 }
 
 // 📌 Elérhető shortlinkek és összegző adatok lekérése
 $shortlinkData = $shortlink->getAvailableShortlinks();
 $availableShortlinks = $shortlinkData["shortlinks"];
 $totalShortlinks = (int) $shortlinkData["totalShortlinks"];
-$totalRewards = Core::sanitizeOutput(number_format($shortlinkData["totalRewards"], 8));
+$totalRewards = htmlspecialchars(number_format($shortlinkData["totalRewards"], 8), ENT_QUOTES, 'UTF-8');
 
 include("header.php");
 ?>
@@ -60,11 +59,11 @@ include("header.php");
             <?php foreach ($availableShortlinks as $sl): ?>
                 <div class="col-md-3 mb-4">
                     <div class="card border-dark">
-                        <div class="card-header"><?= Core::sanitizeOutput($sl['name']) ?></div>
+                        <div class="card-header"><?= htmlspecialchars($sl['name'], ENT_QUOTES, 'UTF-8') ?></div>
                         <div class="card-body text-dark">
-                            <p class="card-text">Views: <span id="views-<?= Core::sanitizeOutput($sl['id']) ?>"><?= Core::sanitizeOutput($sl['remaining_views']) ?></span></p>
-                            <p class="card-text"><?= Core::sanitizeOutput($sl['reward']) ?> ZER</p>
-                            <button class="btn btn-primary" onclick="visitShortlink('<?= Core::sanitizeOutput($sl['id']) ?>')">Visit</button>
+                            <p class="card-text">Views: <span id="views-<?= htmlspecialchars($sl['id'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($sl['remaining_views'], ENT_QUOTES, 'UTF-8') ?></span></p>
+                            <p class="card-text"><?= htmlspecialchars($sl['reward'], ENT_QUOTES, 'UTF-8') ?> ZER</p>
+                            <button class="btn btn-primary" onclick="visitShortlink('<?= htmlspecialchars($sl['id'], ENT_QUOTES, 'UTF-8') ?>')">Visit</button>
                         </div>
                     </div>
                 </div>
@@ -81,7 +80,7 @@ function visitShortlink(shortlinkId) {
     button.disabled = true;
     button.innerHTML = "Please wait...";
     setTimeout(() => {
-        window.location.href = 'shortlink?visit_shortlink=' + shortlinkId;
+        window.location.href = 'shortlink?visit_shortlink=' + encodeURIComponent(shortlinkId);
     }, 1000);
 }
 </script>

@@ -6,8 +6,8 @@ $referral = new Referral($mysqli, $user, $config);
 
 // 📌 Adatok betöltése
 $referralPercent = (float) $referral->getReferralPercent();
-$referralLink = Core::sanitizeOutput($referral->getReferralLink());
-$totalReferralEarnings = Core::sanitizeOutput(number_format($referral->getTotalReferralEarnings(), 8)); // Összes referral earnings
+$referralLink = htmlspecialchars(Core::sanitizeOutput($referral->getReferralLink()), ENT_QUOTES, 'UTF-8');
+$totalReferralEarnings = htmlspecialchars(Core::sanitizeOutput(number_format($referral->getTotalReferralEarnings(), 8)), ENT_QUOTES, 'UTF-8'); // Összes referral earnings
 $referredUsers = $referral->getReferredUsers();
 
 include("header.php");
@@ -33,7 +33,7 @@ include("header.php");
                 <div class="card border-0 rounded-3 h-100">
                     <div class="card-body text-center d-flex flex-column justify-content-center">
                         <h5 class="card-title text-success fw-bold">Earn Rewards</h5>
-                        <p class="card-text mt-2">Share your link and earn <strong><?= Core::sanitizeOutput($referralPercent) ?>%</strong> commission!</p>
+                        <p class="card-text mt-2">Share your link and earn <strong><?= htmlspecialchars(Core::sanitizeOutput($referralPercent), ENT_QUOTES, 'UTF-8') ?>%</strong> commission!</p>
                     </div>
                 </div>
             </div>
@@ -58,9 +58,9 @@ include("header.php");
                 <tbody>
                     <?php foreach ($referredUsers as $user): ?>
                         <tr>
-                            <td><?= Core::sanitizeOutput(substr($user['masked_address'], 0, -6)) . str_repeat('*', 6) ?></td>
-                            <td><?= Core::findTimeAgo($user['last_activity']) ?></td>
-                            <td class="text-success fw-bold"><?= Core::sanitizeOutput(number_format($user['referral_earnings'], 8)) ?> ZER</td>
+                            <td><?= htmlspecialchars(Core::sanitizeOutput(substr($user['masked_address'], 0, -6)) . str_repeat('*', 6), ENT_QUOTES, 'UTF-8') ?></td>
+                            <td><?= htmlspecialchars(Core::findTimeAgo($user['last_activity']), ENT_QUOTES, 'UTF-8') ?></td>
+                            <td class="text-success fw-bold"><?= htmlspecialchars(Core::sanitizeOutput(number_format($user['referral_earnings'], 8)), ENT_QUOTES, 'UTF-8') ?> ZER</td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
@@ -78,10 +78,13 @@ function copyRefLink() {
     let refLink = document.getElementById("refLink");
     refLink.select();
     refLink.setSelectionRange(0, 99999);
-    navigator.clipboard.writeText(refLink.value);
-    let btn = document.querySelector(".btn-primary");
-    btn.innerHTML = '<i class="bi bi-check-circle"></i> Copied!';
-    setTimeout(() => btn.innerHTML = '<i class="bi bi-clipboard"></i> Copy', 2000);
+    navigator.clipboard.writeText(refLink.value).then(() => {
+        let btn = document.querySelector(".btn-primary");
+        btn.innerHTML = '<i class="bi bi-check-circle"></i> Copied!';
+        setTimeout(() => btn.innerHTML = '<i class="bi bi-clipboard"></i> Copy', 2000);
+    }).catch(err => {
+        console.error('Failed to copy: ', err);
+    });
 }
 </script>
 

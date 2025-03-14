@@ -32,11 +32,10 @@ if ($config->get('maintenance') === 'on') {
 }
 
 // Oldal kiválasztása az URL alapján
-$page = isset($_GET['page']) ? trim($_GET['page'], '/') : 'home';
+$page = isset($_GET['page']) ? htmlspecialchars(trim($_GET['page'], '/'), ENT_QUOTES, 'UTF-8') : 'home';
 
 // Dinamikus oldal betöltés
 $pageTitle = $router->getPageTitle($page);
 $templatePath = $router->getPage($page);
 
 include($templatePath);
-

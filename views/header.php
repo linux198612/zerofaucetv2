@@ -23,6 +23,19 @@ $bitcotasks_shortlink_status = $config->get('bitcotasks_shortlink_status');
 $userId = Core::sanitizeOutput($user->getUserData('id'));
 $websiteUrl = Core::sanitizeOutput($config->get('website_url'));
 $pageTitle = Core::sanitizeOutput($pageTitle);
+
+$pages = [
+    'autofaucet' => ['status' => $autofaucet_status, 'icon' => 'bi-arrow-repeat', 'name' => 'AutoFaucet'],
+    'energyshop' => ['status' => $energyshop_status, 'icon' => 'bi-shop', 'name' => 'EnergyShop'],
+    'achievements' => ['status' => $achievements_status, 'icon' => 'bi-trophy', 'name' => 'Achievements'],
+    'daily_bonus' => ['status' => $dailybonus_status, 'icon' => 'bi-calendar-check', 'name' => 'Daily Bonus'],
+    'faucet' => ['status' => $claimStatus, 'icon' => 'bi-droplet', 'name' => 'Faucet'],
+    'shortlink' => ['status' => $shortlink_status, 'icon' => 'bi-link-45deg', 'name' => 'Shortlinks'],
+    'ptc' => ['status' => $ptcStatus, 'icon' => 'bi-megaphone', 'name' => 'PTC (Zerads)', 'external' => true, 'url' => "https://zerads.com/ptc.php?ref=$zerads_id&user=$userId"],
+    'offerwalls' => ['status' => $offerwalls_status, 'icon' => 'bi-cash-stack', 'name' => 'Offerwalls'],
+    'bitcotasks_ptc' => ['status' => $bitcotasks_ptc_status, 'icon' => 'bi-cash-stack', 'name' => 'PTC'],
+    'bitcotasks_shortlinks' => ['status' => $bitcotasks_shortlink_status, 'icon' => 'bi-link', 'name' => 'Shortlinks #2']
+];
 ?>
 
 <!DOCTYPE html>
@@ -204,76 +217,14 @@ background: #343a40;
         </a>
     </li>
     <hr>
-    <?php if ($autofaucet_status == "on") { ?>
-    <li class="nav-item">
-        <a class="nav-link" href="<?= $websiteUrl ?>autofaucet">
-            <i class="bi bi-arrow-repeat"></i> AutoFaucet
-        </a>
-    </li>
-    <?php } ?>
-    <?php if ($energyshop_status == "on") { ?>
-    <li class="nav-item">
-        <a class="nav-link" href="<?= $websiteUrl ?>energyshop">
-            <i class="bi bi-shop"></i> EnergyShop
-        </a>
-    </li>
-<?php } ?>
-    <?php if ($achievements_status == "on") { ?>
-        <li class="nav-item">
-            <a class="nav-link" href="<?= $websiteUrl ?>achievements">
-                <i class="bi bi-trophy"></i> Achievements
-            </a>
-        </li>
-    <?php } ?>
-    <?php if ($dailybonus_status == "on") { ?>
-        <li class="nav-item">
-            <a class="nav-link" href="<?= $websiteUrl ?>daily_bonus">
-                <i class="bi bi-calendar-check"></i> Daily Bonus
-            </a>
-        </li>
-    <?php } ?>
-    <?php if ($claimStatus == "on") { ?>
-        <li class="nav-item">
-            <a class="nav-link" href="<?= $websiteUrl ?>faucet">
-                <i class="bi bi-droplet"></i> Faucet
-            </a>
-        </li>
-    <?php } ?>
-    <?php if ($shortlink_status == "on") { ?>
-        <li class="nav-item">
-            <a class="nav-link" href="<?= $websiteUrl ?>shortlink">
-                <i class="bi bi-link-45deg"></i> Shortlinks
-            </a>
-        </li>
-    <?php } ?>
-    <?php if ($ptcStatus == "on") { ?>
-		<li class="nav-item">
-		    <a class="nav-link" href="https://zerads.com/ptc.php?ref=<?= $zerads_id ?>&user=<?= $userId ?>" target="_blank">
-		        <i class="bi bi-megaphone"></i> PTC (Zerads)
-		    </a>
-		</li>
-    <?php } ?>
-    <?php if ($offerwalls_status == "on") { ?>
-    <li class="nav-item">
-        <a class="nav-link" href="<?= $websiteUrl ?>offerwalls">
-            <i class="bi bi-cash-stack"></i> Offerwalls
-        </a>
-    </li>
-	 <?php } ?>
-    <?php if ($bitcotasks_ptc_status == "on") { ?>
-    <li class="nav-item">
-        <a class="nav-link" href="<?= $websiteUrl ?>bitcotasks_ptc">
-            <i class="bi bi-cash-stack"></i> PTC
-        </a>
-    </li>
-	 <?php } ?>
-    <?php if ($bitcotasks_shortlink_status == "on") { ?>
-    <li class="nav-item">
-        <a class="nav-link" href="<?= $websiteUrl ?>bitcotasks_shortlinks">
-            <i class="bi bi-link"></i> Shortlinks #2
-        </a>
-    </li>
-    <?php } ?>
+    <?php foreach ($pages as $page => $data) {
+        if ($data['status'] == "on") { ?>
+            <li class="nav-item">
+                <a class="nav-link" href="<?= $data['external'] ? $data['url'] : $websiteUrl . $page ?>" <?= $data['external'] ? 'target="_blank"' : '' ?>>
+                    <i class="bi <?= $data['icon'] ?>"></i> <?= $data['name'] ?>
+                </a>
+            </li>
+    <?php } } ?>
     <hr>
     <li class="nav-item">
         <a class="nav-link text-danger" href="<?= $websiteUrl ?>logout">

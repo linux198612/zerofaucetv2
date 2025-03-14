@@ -1,7 +1,8 @@
 <?php
 
 // Inicializálás
-$user = new User($mysqli, $user['id']);
+$userId = $core->sanitizeInput($user['id']); // Input sanitization
+$user = new User($mysqli, $userId);
 $dashboard = new Dashboard($mysqli, $config);
 
 $currencyValue = $dashboard->getCurrencyValue();
@@ -22,7 +23,7 @@ if ($currentLevel >= $maxLevel) {
     $progressPercentage = 100;
 } else {
     $xpToNextLevel = $xpThreshold - ($currentXP % $xpThreshold);
-    $xpToNextLevelText = "<strong>$xpToNextLevel XP</strong>";
+    $xpToNextLevelText = "<strong>" . Core::sanitizeOutput($xpToNextLevel) . " XP</strong>"; // Output sanitization
     $progressPercentage = ($currentXP % $xpThreshold) / $xpThreshold * 100;
 }
 

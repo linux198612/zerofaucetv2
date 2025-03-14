@@ -38,7 +38,6 @@ include("header.php");
             Due to ongoing security investigations, withdrawals are currently set to manual processing. <br>
             Please be assured that your funds are safe and secure. <br>
             We appreciate your patience and understanding during this time.
-           
         </div>
     </div>
 
@@ -65,8 +64,8 @@ include("header.php");
                     ?>
                     <div class="progress mt-3" style="height: 18px; border-radius: 8px; overflow: hidden;">
                         <div class="progress-bar bg-success progress-bar-striped progress-bar-animated" role="progressbar"
-                            style="width: <?= $progressWithdraw ?>%;" 
-                            aria-valuenow="<?= $progressWithdraw ?>" 
+                            style="width: <?= htmlspecialchars($progressWithdraw, ENT_QUOTES, 'UTF-8') ?>%;" 
+                            aria-valuenow="<?= htmlspecialchars($progressWithdraw, ENT_QUOTES, 'UTF-8') ?>" 
                             aria-valuemin="0" 
                             aria-valuemax="100">
                             <?= round($progressWithdraw, 2) ?>%
@@ -88,7 +87,14 @@ function startWithdraw() {
     let button = document.getElementById("withdraw-btn");
     button.innerHTML = "Processing...";
     button.disabled = true;
-    window.location.href = "withdraw?withdr=fp&csrf_token=<?= Core::generateCsrfToken(); ?>";
+
+    // Biztonságosabb módon kezeljük a CSRF tokent
+    let csrfToken = '<?= Core::generateCsrfToken(); ?>';
+    let url = new URL(window.location.href);
+    url.searchParams.set('withdr', 'fp');
+    url.searchParams.set('csrf_token', csrfToken);
+
+    window.location.href = url.toString();
 }
 </script>
                 <div class="card-body d-flex flex-column justify-content-center text-center">

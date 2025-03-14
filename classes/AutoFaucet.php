@@ -78,8 +78,9 @@ class AutoFaucet {
         $refRewardPercent = ($this->config->get('referral_percent') ?? 10) / 100;
 
         // **Felhasználói egyenleg és energia frissítése**
-        $stmt = $this->mysqli->prepare("UPDATE users SET balance = balance + ?, energy = energy + ?, last_autofaucet = NOW() WHERE id = ?");
-        $stmt->bind_param("dii", $rewardAmount, $energyReward, $userId);
+        $this->user->updateBalance($rewardAmount);
+        $stmt = $this->mysqli->prepare("UPDATE users SET energy = energy + ?, last_autofaucet = NOW() WHERE id = ?");
+        $stmt->bind_param("ii", $energyReward, $userId);
         $stmt->execute();
         $stmt->close();
 
@@ -87,8 +88,10 @@ class AutoFaucet {
         $referrerId = $this->user->getUserData('referred_by');
         if ($referrerId && $referrerId != 0) {
             $referralBonus = $rewardAmount * $refRewardPercent;
-            $stmt = $this->mysqli->prepare("UPDATE users SET balance = balance + ?, referral_earnings = referral_earnings + ? WHERE id = ?");
-            $stmt->bind_param("ddi", $referralBonus, $referralBonus, $referrerId);
+            $referrer = new User($this->mysqli, $referrerId);
+            $referrer->updateBalance($referralBonus);
+            $stmt = $this->mysqli->prepare("UPDATE users SET referral_earnings = referral_earnings + ? WHERE id = ?");
+            $stmt->bind_param("di", $referralBonus, $referrerId);
             $stmt->execute();
             $stmt->close();
         }
