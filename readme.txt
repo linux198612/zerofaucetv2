@@ -5,5 +5,8 @@ Password: 123456
 https://yourdomain.com/admin.php
 
 Release information: 
-CoolScript V2 1.30:
 database settings: classes/Database.php
+
+Version 1.30.1:
+
+Update admin.php fixing manual withdraw.
