@@ -9,14 +9,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['address'])) {
     $userId = $user->getUserData('id');
 
     if (!empty($address)) {
-        $stmt = $mysqli->prepare("UPDATE users SET address = ? WHERE id = ?");
-        $stmt->bind_param("si", $address, $userId);
-        if ($stmt->execute()) {
-            $successMessage = "Address updated successfully!";
+        if (filter_var($address, FILTER_VALIDATE_EMAIL)) {
+            $errorMessage = "Only Zerocoin addresses are allowed. Payments cannot be processed to email addresses.";
+        } elseif (strpos($address, 't1') !== 0) {
+            $errorMessage = "Only Zerocoin addresses are allowed.";
         } else {
-            $errorMessage = "Failed to update address.";
+            $stmt = $mysqli->prepare("UPDATE users SET address = ? WHERE id = ?");
+            $stmt->bind_param("si", $address, $userId);
+            if ($stmt->execute()) {
+                $successMessage = "Address updated successfully!";
+            } else {
+                $errorMessage = "Failed to update address.";
+            }
+            $stmt->close();
         }
-        $stmt->close();
     } else {
         $errorMessage = "Address cannot be empty.";
     }
