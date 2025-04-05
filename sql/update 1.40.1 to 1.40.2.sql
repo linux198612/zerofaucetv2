@@ -1,0 +1,1 @@
+ALTER TABLE user_ads ADD COLUMN ad_type ENUM('window', 'iframe') NOT NULL DEFAULT 'window';
