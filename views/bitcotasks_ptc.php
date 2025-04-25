@@ -10,6 +10,8 @@ $bitcotasks = new BitcotasksPTC($mysqli, $user, $config);
 // API-ból kampányok lekérése
 $campaignsData = $bitcotasks->getPTCCampaigns();
 
+
+
 if (isset($campaignsData['status']) && $campaignsData['status'] == '200') {
     $campaigns = $campaignsData['data'];
     $totalCampaigns = count($campaigns);

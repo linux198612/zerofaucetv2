@@ -1,7 +1,20 @@
 <?php
+// ——————————————————————————————
+// 1) Mielőtt bármi kimenet lenne (őrlap, HTML, whitespace stb.), állítsd be a fejléceket:
+// ——————————————————————————————
+header("X-Content-Type-Options: nosniff");
+header("X-Frame-Options: SAMEORIGIN");
+header("X-XSS-Protection: 1; mode=block");
+// Ha már kizárólag HTTPS-en fut az oldal, engedélyezheted az HSTS-t is:
+// (ez csak akkor érvényes, ha biztosan minden URL-re HTTPS megy)
+header("Strict-Transport-Security: max-age=31536000; includeSubDomains; preload");
+
+// ——————————————————————————————
+// 2) Utána jöhet a session és a többi inicializáció
+// ——————————————————————————————
 ini_set('session.use_only_cookies', 1);
 ini_set('session.cookie_httponly', 1);
-ini_set('session.cookie_secure', 1); 
+ini_set('session.cookie_secure', 1);
 session_start();
 
 require_once "autoload.php";
@@ -14,6 +27,7 @@ $session = new Session($mysqli);
 $user = $session->getUser();
 
 $core->updateCoingeckoPrice();
+$core->updateCurrenciesPrices(); // Árfolyamok frissítése a currencies táblában
 $core->updateUserLevelAndXP($user['id']);
 
 //ini_set('display_errors', 1);

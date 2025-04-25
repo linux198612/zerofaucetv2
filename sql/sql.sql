@@ -70,7 +70,10 @@ INSERT INTO `settings` (`id`, `name`, `value`) VALUES
 (60, 'smtp_port', '587'),
 (61, 'smtp_user', ''),
 (62, 'smtp_pass', ''),
-(63, 'smtp_ssl', 'on');
+(63, 'smtp_ssl', 'on'),
+(64, 'faucetpay_mode', 'off'),
+(65, 'faucetpay_api_key', ''),
+(66, 'withdrawlimithour', '1');
 
 
 CREATE TABLE IF NOT EXISTS `white_list` (
@@ -94,6 +97,7 @@ CREATE TABLE users (
     password_hash VARCHAR(255) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
     address VARCHAR(255) UNIQUE NOT NULL,
+	 fp_address VARCHAR(255) UNIQUE NOT NULL,    
     ip_address VARCHAR(50) DEFAULT NULL,
     balance decimal(20,8) NOT NULL,
     deposit DECIMAL(18, 8) DEFAULT 0,
@@ -102,7 +106,7 @@ CREATE TABLE users (
     last_activity int(32) NOT NULL DEFAULT UNIX_TIMESTAMP(),
     level int(32) DEFAULT 0,
     xp int(32) DEFAULT 0,
-	  auto_token VARCHAR(64) DEFAULT NULL,
+	 auto_token VARCHAR(64) DEFAULT NULL,
     joined int(32) NOT NULL,
     referred_by INT NOT NULL DEFAULT 0,
     referral_earnings DECIMAL(15,8) NOT NULL DEFAULT 0.00000000,
@@ -111,18 +115,18 @@ CREATE TABLE users (
     last_claim int(32) NOT NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
 
--- Kifizetések tábla
 CREATE TABLE withdrawals (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
-    amount decimal(10,8) NOT NULL,
+    amount DECIMAL(20,8) NOT NULL,
+    zer_value DECIMAL(20,8) DEFAULT NULL,
     txid varchar(400) NOT NULL,
+    currency VARCHAR(10) NOT NULL DEFAULT 'ZER',
     requested_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     status ENUM('Pending', 'Paid', 'Rejected') NOT NULL DEFAULT 'Pending',
     FOREIGN KEY (user_id) REFERENCES users(id)
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
 
-ALTER TABLE withdrawals ADD COLUMN currency VARCHAR(10) NOT NULL DEFAULT 'ZER';
 
 CREATE TABLE IF NOT EXISTS `offerwalls_history` (
 `id` int(32) UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -211,25 +215,17 @@ CREATE TABLE `energyshop_packages` (
     `zero_amount` DECIMAL(10,8) NOT NULL
 );
 
--- Adatok beszúrása a ptc_packages táblába
-INSERT INTO ptc_packages (name, duration_seconds, zer_cost, reward) VALUES
-('5 seconds', 5, 0.002, 0.001),
-('10 seconds', 10, 0.004, 0.002),
-('30 seconds', 30, 0.012, 0.0060),
-('50 seconds', 50, 0.020, 0.010);
-
 CREATE TABLE deposits (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
     address VARCHAR(255) NOT NULL,
-    private_key VARCHAR(255) NOT NULL,
     amount DECIMAL(18, 8) DEFAULT 0,
     status ENUM('Pending', 'Completed', 'Rejected') DEFAULT 'Pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    expires_at TIMESTAMP NULL
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-
+    expires_at TIMESTAMP NULL,
+    wallet_id INT DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 CREATE TABLE ptc_packages (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -239,10 +235,12 @@ CREATE TABLE ptc_packages (
     reward DECIMAL(10,8) NOT NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
 
+-- Adatok beszúrása a ptc_packages táblába
 INSERT INTO ptc_packages (name, duration_seconds, zer_cost, reward) VALUES
-('5 seconds', 5, 0.001, 0.0005),
-('10 seconds', 10, 0.002, 0.0010),
-('30 seconds', 30, 0.006, 0.0030);
+('5 seconds', 5, 0.002, 0.001),
+('10 seconds', 10, 0.004, 0.002),
+('30 seconds', 30, 0.012, 0.0060),
+('50 seconds', 50, 0.020, 0.010);
 
 CREATE TABLE user_ads (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -251,6 +249,7 @@ CREATE TABLE user_ads (
     url VARCHAR(255) NOT NULL,
     package_id INT NOT NULL,
     views_remaining INT NOT NULL DEFAULT 0,
+    ad_type ENUM('window', 'iframe') NOT NULL DEFAULT 'window',
     status ENUM('Pending', 'Active', 'Completed') DEFAULT 'Pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id),
@@ -275,6 +274,34 @@ CREATE TABLE password_resets (
     FOREIGN KEY (user_id) REFERENCES users(id)
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
 
-ALTER TABLE deposits ADD COLUMN withdrawn ENUM('No', 'Yes') DEFAULT 'No';
+CREATE TABLE `currencies` (
+  `id` int(32) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `currency_name` varchar(75) NOT NULL,
+  `code` varchar(75) NOT NULL,
+  `price` decimal(20,6) NOT NULL,
+  `wallet` varchar(20) NOT NULL,
+  `minimum_withdrawal` decimal(30,2) DEFAULT 0.01,
+  `timestamp` int(32) NOT NULL,
+  `status` varchar(75) NOT NULL DEFAULT 'off',
+  PRIMARY KEY (`id`)
+) ENGINE=MyISAM DEFAULT CHARSET=latin1;
 
-ALTER TABLE user_ads ADD COLUMN ad_type ENUM('window', 'iframe') NOT NULL DEFAULT 'window';
+INSERT INTO `currencies` (`id`, `currency_name`, `code`, `price`, `wallet`, `minimum_withdrawal`, `timestamp`, `status`) VALUES
+(1, 'litecoin', 'LTC', 82.270000, 'faucetpay', 0.10, 1743920909, 'on'),
+(2, 'pepe', 'PEPE', 0.000007, 'faucetpay', 0.10, 1743920909, 'on'),
+(3, 'solana', 'SOL', 120.310000, 'faucetpay', 0.10, 1743920909, 'on');
+
+CREATE TABLE banned_username (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(255) NOT NULL UNIQUE,
+    banned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE wallet_addresses (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    address VARCHAR(255) NOT NULL UNIQUE,
+    status ENUM('active', 'inactive') NOT NULL DEFAULT 'active',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+

@@ -98,7 +98,6 @@ include("header.php");
                 <script src='https://hcaptcha.com/1/api.js' async defer></script>
                 <div class='h-captcha' data-sitekey='<?= $hcaptchaPubKey ?>'></div>
             </div><br>
-
             <button type='submit' class='btn btn-success' id="claimButton" <?= $wait > 0 ? 'disabled' : '' ?>>Claim</button>
         </form>
     <?php endif; ?>

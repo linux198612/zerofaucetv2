@@ -85,6 +85,14 @@ if ($durationSeconds <= 0) {
             font-weight: bold;
             z-index: 1000;
         }
+        .banner-container {
+            position: absolute;
+            top: 0;
+            right: 10px; /* Csökkentett érték a teljes megjelenéshez */
+            width: 468px; /* Banner szélessége */
+            height: 60px; /* Banner magassága */
+            overflow: hidden; /* Biztosítja, hogy semmi ne lógjon ki */
+        }
     </style>
     <script>
         let timeLeft = <?= $durationSeconds ?>;
@@ -122,6 +130,9 @@ if ($durationSeconds <= 0) {
 <div class="countdown-container">
     <button class="back-button" onclick="window.location.href='ptc';">Back to PTC</button>
     <p id="countdown"><?= $durationSeconds ?> seconds remaining</p>
+    <div class="banner-container">
+        <iframe src="https://zerads.com/ad/ad.php?width=468&ref=4652" marginwidth="0" marginheight="0" width="468" height="60" scrolling="no" border="0" frameborder="0"></iframe>
+    </div>
 </div>
 
 <div id="focus-warning" class="focus-warning">

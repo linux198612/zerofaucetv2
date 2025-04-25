@@ -6,14 +6,13 @@ class Shortlink {
     private $realIpAddress;
     private $websiteUrl;
 
-    public function __construct($mysqli, $user, $config) { // 🔹 Hozzáadjuk a $config paramétert
+    public function __construct($mysqli, $user, $config) {
         $this->mysqli = $mysqli;
         $this->user = $user;
         $this->realIpAddress = $_SERVER['REMOTE_ADDR'];
-        $this->websiteUrl = $config->get('website_url'); // 🔹 Most az adatbázisból kapott URL-t használjuk
+        $this->websiteUrl = $config->get('website_url');
     }
 
-    // Shortlink meglátogatása
     public function visitShortlink($shortlinkId) {
         $stmt = $this->mysqli->prepare("SELECT * FROM shortlinks_list WHERE id = ?");
         $stmt->bind_param("i", $shortlinkId);
@@ -25,7 +24,6 @@ class Shortlink {
             return ["success" => false, "message" => "Shortlink not found."];
         }
 
-        // Ellenőrizzük, hogy a felhasználó már látta-e, és maradt-e elérhető megtekintés
         if ($this->hasUserViewedShortlink($shortlinkId)) {
             return ["success" => false, "message" => "You reached the limit for this shortlink."];
         }
@@ -49,7 +47,7 @@ class Shortlink {
         }
     }
 
-    // Jutalom a shortlink megtekintéséért
+   // Jutalom a shortlink megtekintéséért
     public function rewardShortlink($claimKey) {
         $stmt = $this->mysqli->prepare("SELECT sl_list.reward, sl_views.slid 
                                         FROM shortlinks_views AS sl_views 
@@ -93,57 +91,99 @@ class Shortlink {
         return ["success" => true, "message" => "You received {$rewardAmount} ZER for visiting the shortlink."];
     }
 
-    // Elérhető shortlinkek listája és összesített adatok
     public function getAvailableShortlinks() {
         $stmt = $this->mysqli->prepare("
             SELECT sllist.*, 
-            (SELECT COUNT(id) FROM shortlinks_viewed WHERE userid = ? OR ip_address = ? AND timestamp_expiry > UNIX_TIMESTAMP(NOW()) AND slid = sllist.id) as viewed_count
+            (SELECT COUNT(id) 
+             FROM shortlinks_viewed 
+             WHERE (userid = ? OR ip_address = ?) 
+               AND slid = sllist.id 
+               AND timestamp_expiry > UNIX_TIMESTAMP(NOW())) AS active_views
             FROM shortlinks_list AS sllist 
-            WHERE sllist.limit_view > (SELECT COUNT(id) FROM shortlinks_viewed WHERE userid = ? OR ip_address = ? AND timestamp_expiry > UNIX_TIMESTAMP(NOW()))
             ORDER BY reward DESC
         ");
         $userId = $this->user->getUserData('id');
-        $stmt->bind_param("ssss", $userId, $this->realIpAddress, $userId, $this->realIpAddress);
+        $stmt->bind_param("ss", $userId, $this->realIpAddress);
         $stmt->execute();
         $result = $stmt->get_result();
         $shortlinks = [];
-
-        $totalShortlinks = 0; // Összes megtekinthető shortlink
-        $totalRewards = 0.0;  // Összes megszerezhető ZER
-
+    
+        $totalShortlinks = 0;
+        $totalRewards = 0.0;
+    
         while ($row = $result->fetch_assoc()) {
-            $remainingViews = $row['limit_view'] - $row['viewed_count'];
-            if ($remainingViews > 0) {
+            $dailyRemainingViews = $row['limit_view'] - $row['active_views'];
+    
+            // Ha az aktív megtekintések száma 0, akkor újra engedélyezzük az összes
+            if ($row['active_views'] == 0) {
+                $dailyRemainingViews = $row['limit_view'];
+            }
+    
+            $isAvailable = ($dailyRemainingViews > 0);
+    
+            if ($isAvailable) {
                 $shortlinks[] = [
                     "id" => $row['id'],
                     "name" => $row['name'],
                     "reward" => $row['reward'],
-                    "remaining_views" => $remainingViews
+                    "remaining_views" => $dailyRemainingViews
                 ];
-                $totalShortlinks += $remainingViews;
-                $totalRewards += $row['reward'] * $remainingViews;
+                $totalShortlinks += $dailyRemainingViews;
+                $totalRewards += $row['reward'] * $dailyRemainingViews;
             }
+        }
+    
+        $stmt->close();
+        return [
+            "shortlinks" => $shortlinks,
+            "totalShortlinks" => $totalShortlinks,
+            "totalRewards" => $totalRewards
+        ];
+    }
+    
+    public function getLastViewedShortlinks($limit = 10) {
+        $stmt = $this->mysqli->prepare("
+            SELECT slv.timestamp, sl.name, slv.ip_address 
+            FROM shortlinks_viewed AS slv
+            INNER JOIN shortlinks_list AS sl
+            ON slv.slid = sl.id
+            WHERE slv.userid = ?
+            ORDER BY slv.timestamp DESC
+            LIMIT ?
+        ");
+        $userId = $this->user->getUserData('id');
+        $stmt->bind_param("ii", $userId, $limit);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $lastViewed = [];
+
+        while ($row = $result->fetch_assoc()) {
+            $lastViewed[] = [
+                "timestamp" => date('Y-m-d H:i:s', $row['timestamp']),
+                "name" => $row['name'],
+                "ip_address" => $row['ip_address']
+            ];
         }
 
         $stmt->close();
-        return ["shortlinks" => $shortlinks, "totalShortlinks" => $totalShortlinks, "totalRewards" => $totalRewards];
+        return $lastViewed;
     }
 
-    // Segédfüggvények
     private function hasUserViewedShortlink($shortlinkId) {
         $stmt = $this->mysqli->prepare("
-            SELECT COUNT(id) AS view_count, 
-                   (SELECT limit_view FROM shortlinks_list WHERE id = ?) AS max_views 
+            SELECT COUNT(id) AS view_count 
             FROM shortlinks_viewed 
-            WHERE (userid = ? OR ip_address = ?) AND slid = ? AND timestamp_expiry > UNIX_TIMESTAMP(NOW())
+            WHERE (userid = ? OR ip_address = ?) 
+              AND slid = ? 
+              AND timestamp_expiry > UNIX_TIMESTAMP(NOW())
         ");
         $userId = $this->user->getUserData('id');
-        $stmt->bind_param("iisi", $shortlinkId, $userId, $this->realIpAddress, $shortlinkId);
+        $stmt->bind_param("isi", $userId, $this->realIpAddress, $shortlinkId);
         $stmt->execute();
         $result = $stmt->get_result()->fetch_assoc();
         $stmt->close();
 
-        return $result['view_count'] >= $result['max_views']; // Ha a megtekintések száma elérte a limitet, tiltás
+        return $result['view_count'] > 0;
     }
 
     private function fetchUrl($url) {

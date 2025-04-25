@@ -276,6 +276,26 @@ class Advertise {
         return $viewCount;
     }
 
+    public function getAdViewStats($adId) {
+        $stmt = $this->mysqli->prepare("
+            SELECT DATE(viewed_at) as view_date, COUNT(*) as view_count
+            FROM ptc_history
+            WHERE ad_id = ? AND viewed_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+            GROUP BY DATE(viewed_at)
+            ORDER BY view_date ASC
+        ");
+        $stmt->bind_param("i", $adId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $stats = [];
+        while ($row = $result->fetch_assoc()) {
+            $stats[] = $row;
+        }
+        $stmt->close();
+
+        return $stats ?: []; // Ensure stats is always an array
+    }
+
     private function getPackageById($packageId) {
         $stmt = $this->mysqli->prepare("SELECT * FROM ptc_packages WHERE id = ?");
         $stmt->bind_param("i", $packageId);

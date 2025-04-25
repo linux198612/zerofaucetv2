@@ -18,7 +18,7 @@ if (!empty($_GET['pwd']) && $_GET['pwd'] === "xxxxxx") {
     if ($userId) {
         $user = new User($mysqli, $userId);
 
-        $topay = floatval($amount) * 0.9; // Jutalom átszámítása
+        $topay = floatval($amount) * 0.8; // Jutalom átszámítása
         //$xpEarned = intval($clicks); // XP a kattintások számától függően
 
         // Frissítjük a felhasználó egyenlegét és XP-jét

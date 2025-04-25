@@ -10,6 +10,7 @@ $depositAddress = $activeDeposit['address'] ?? null;
 
 $allDeposits = $deposit->getUserDeposits($userId);
 
+// Új deposit address kérés
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && (!$depositAddress || $activeDeposit['status'] !== 'Pending')) {
     try {
         $depositAddress = $deposit->generateNewAddress($userId);
@@ -26,6 +27,7 @@ include("header.php");
 
 <div class="container mt-4">
     <h3>Deposit</h3>
+
     <?php if (!empty($_SESSION['success_message'])): ?>
         <div class="alert alert-success"><?= $_SESSION['success_message'] ?></div>
         <?php unset($_SESSION['success_message']); ?>
@@ -39,9 +41,15 @@ include("header.php");
         <p>Your deposit address is:</p>
         <div class="alert alert-info"><?= htmlspecialchars($depositAddress) ?></div>
         <p>This address is valid until: <?= htmlspecialchars($activeDeposit['expires_at']) ?></p>
+        <p><strong>Note:</strong> If no deposit is made within 24 hours, the address will become available for others.</p>
     <?php else: ?>
+        <div class="alert alert-info">
+            Click the "Request Deposit Address" button to receive a deposit address for sending Zero Coin to the platform. There is no minimum or maximum limit for deposits. The amount you send will be credited to your deposit balance.<br>
+            <strong>Important:</strong> We reuse wallet addresses, so never send funds to an address you have previously used out of habit. Always request a new deposit address before making a deposit. Each requested address can only be used for one deposit.<br>
+            <strong>Note:</strong> It is possible to receive a wallet address that you have already used for a previous deposit. This happens because, after processing the deposited amount, we make the wallet address reusable.
+        </div>
         <form method="POST">
-            <button type="submit" class="btn btn-primary">Generate Deposit Address</button>
+            <button type="submit" class="btn btn-primary">Request Deposit Address</button>
         </form>
     <?php endif; ?>
 

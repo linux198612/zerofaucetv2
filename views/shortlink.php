@@ -4,7 +4,7 @@
 $user = new User($mysqli, $user['id']);
 $shortlink = new Shortlink($mysqli, $user, $config);
 
-// 📌 Shortlink látogatás kezelése
+// Shortlink látogatás kezelése
 $alertSL = '';
 $shortlinkId = filter_input(INPUT_GET, 'visit_shortlink', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
 if (!empty($shortlinkId)) {
@@ -17,18 +17,21 @@ if (!empty($shortlinkId)) {
     }
 }
 
-// 📌 Shortlink megtekintés utáni jutalom kezelése
+// Shortlink megtekintés utáni jutalom kezelése
 $viewKey = filter_input(INPUT_GET, 'viewed', FILTER_SANITIZE_FULL_SPECIAL_CHARS);
 if (!empty($viewKey)) {
     $rewardResult = $shortlink->rewardShortlink($viewKey);
     $alertSL = Core::alert($rewardResult['success'] ? "success" : "danger", htmlspecialchars($rewardResult['message'], ENT_QUOTES, 'UTF-8'));
 }
 
-// 📌 Elérhető shortlinkek és összegző adatok lekérése
+// Elérhető shortlinkek és összegző adatok lekérése
 $shortlinkData = $shortlink->getAvailableShortlinks();
 $availableShortlinks = $shortlinkData["shortlinks"];
 $totalShortlinks = (int) $shortlinkData["totalShortlinks"];
 $totalRewards = htmlspecialchars(number_format($shortlinkData["totalRewards"], 8), ENT_QUOTES, 'UTF-8');
+
+// Lekérdezzük az utolsó 10 megtekintett shortlinket
+$lastViewedShortlinks = $shortlink->getLastViewedShortlinks();
 
 include("header.php");
 ?>
@@ -36,27 +39,27 @@ include("header.php");
 <div class="container mt-4">
     <!-- Összegző kártya -->
     <div class="row mb-4">
-    <div class="col-md-6">
-        <div class="card text-center">
-            <div class="card-header">
-                <h6>Total Shortlinks</h6>
+        <div class="col-md-6">
+            <div class="card text-center">
+                <div class="card-header">
+                    <h6>Total Shortlinks</h6>
+                </div>
+                <div class="card-body">
+                    <p class="card-text h5">Available Shortlinks: <?= htmlspecialchars($totalShortlinks, ENT_QUOTES, 'UTF-8') ?></p>
+                </div>
             </div>
-            <div class="card-body">
-                <p class="card-text h5">Available Shortlinks:</strong> <?= $totalShortlinks ?></p>
+        </div>
+        <div class="col-md-6">
+            <div class="card text-center">
+                <div class="card-header">
+                    <h6>Total Earnings</h6>
+                </div>
+                <div class="card-body">
+                    <p class="card-text h5">Rewards: <?= htmlspecialchars($totalRewards, ENT_QUOTES, 'UTF-8') ?> ZER</p>
+                </div>
             </div>
         </div>
     </div>
-    <div class="col-md-6">
-        <div class="card text-center">
-            <div class="card-header">
-                <h6>Total Earnings</h6>
-            </div>
-            <div class="card-body">
-                <p class="card-text h5">Rewards:</strong> <?= $totalRewards ?> ZER</p>
-            </div>
-        </div>
-    </div>
-</div>
 
     <!-- Visszajelzés üzenetek -->
     <div class="row">
@@ -83,6 +86,38 @@ include("header.php");
     <?php else: ?>
         <p class="alert alert-danger text-center">No shortlinks available.</p>
     <?php endif; ?>
+
+
+    <!-- Last 10 Views Log -->
+    <div class="row mt-5">
+        <div class="col-md-12">
+            <h5 class="text-center">Your Last 10 Views</h5>
+            <table class="table table-bordered table-striped">
+                <thead>
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>Shortlink Name</th>
+                        <th>IP Address</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if (!empty($lastViewedShortlinks)): ?>
+                        <?php foreach ($lastViewedShortlinks as $view): ?>
+                            <tr>
+                                <td><?= htmlspecialchars($view['timestamp'], ENT_QUOTES, 'UTF-8') ?></td>
+                                <td><?= htmlspecialchars($view['name'], ENT_QUOTES, 'UTF-8') ?></td>
+                                <td><?= htmlspecialchars($view['ip_address'], ENT_QUOTES, 'UTF-8') ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <tr>
+                            <td colspan="3" class="text-center">No views found.</td>
+                        </tr>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>
 
 <script>

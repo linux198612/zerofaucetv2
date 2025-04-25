@@ -37,8 +37,8 @@ include("header.php");
 
 <div class="row">
 <div class="col-12 col-md-3 text-center p-3">
-         
-        </div>
+
+      </div>
         <div class="col-12 col-md-6 text-center p-3">
               <div class="row">
         <div class="col-md-6">
@@ -75,7 +75,8 @@ include("header.php");
         </div>
     </div>
     <div class="text-center">
-   </div>
+
+    </div>
 
 </div>
 

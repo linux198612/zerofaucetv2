@@ -2,14 +2,38 @@
 
 class Auth {
     private $mysqli;
+    private $config;
     private $realIpAddress;
 
-    public function __construct($mysqli) {
+    public function __construct($mysqli, $config) {
         if (session_status() === PHP_SESSION_NONE) {
             session_start(); // Munkamenet indítása, ha még nem történt meg
         }
         $this->mysqli = $mysqli;
+        $this->config = $config;
         $this->realIpAddress = $_SERVER['REMOTE_ADDR'];
+    }
+
+    public function verifyCaptcha($response) {
+        $captchaVerifyUrl = "https://hcaptcha.com/siteverify";
+        $captchaData = [
+            'secret' => $this->config->get('hcaptcha_sec_key'),
+            'response' => $response,
+        ];
+
+        $options = [
+            'http' => [
+                'method'  => 'POST',
+                'header'  => "Content-Type: application/x-www-form-urlencoded\r\n",
+                'content' => http_build_query($captchaData),
+            ],
+        ];
+
+        $context = stream_context_create($options);
+        $result = file_get_contents($captchaVerifyUrl, false, $context);
+        $captchaResult = json_decode($result, true);
+
+        return $captchaResult['success'] ?? false;
     }
 
     public function generateToken() {
@@ -34,11 +58,6 @@ class Auth {
         return '';
     }
 
-    public function registerOrLoginUser($address) {
-        // Tárca cím alapú belépés logikája
-        // Ezt a metódust már nem használjuk az új username/password belépéshez.
-    }
-
     public function handleRegistration() {
         if (!isset($_POST['address'])) {
             return '';
@@ -60,6 +79,21 @@ class Auth {
     }
 
     public function login($username, $password) {
+    	
+    	    if (!isset($_POST['h-captcha-response']) || !$this->verifyCaptcha($_POST['h-captcha-response'])) {
+        return ['status' => 'error', 'message' => 'Captcha verification failed. Please try again.'];
+    }
+        // Ellenőrizzük, hogy a felhasználó bannolva van-e
+        $stmt = $this->mysqli->prepare("SELECT 1 FROM banned_username WHERE username = ? LIMIT 1");
+        $stmt->bind_param("s", $username);
+        $stmt->execute();
+        $stmt->store_result();
+        if ($stmt->num_rows > 0) {
+            $stmt->close();
+            return "Account Banned."; // Bannolt felhasználó hibaüzenet
+        }
+        $stmt->close();
+
         $stmt = $this->mysqli->prepare("SELECT id, password_hash FROM users WHERE username = ?");
         $stmt->bind_param("s", $username);
         $stmt->execute();
@@ -70,10 +104,11 @@ class Auth {
         if (password_verify($password, $passwordHash)) {
             $_SESSION['user_id'] = $userId;
 
-            // Frissítjük az IP-címet az adatbázisban
+            // Frissítjük az IP-címet és a last_activity mezőt az adatbázisban
             $ipAddress = $this->realIpAddress;
-            $updateStmt = $this->mysqli->prepare("UPDATE users SET ip_address = ? WHERE id = ?");
-            $updateStmt->bind_param("si", $ipAddress, $userId);
+            $currentTimestamp = time(); // Aktuális Unix timestamp
+            $updateStmt = $this->mysqli->prepare("UPDATE users SET ip_address = ?, last_activity = ? WHERE id = ?");
+            $updateStmt->bind_param("sii", $ipAddress, $currentTimestamp, $userId);
             $updateStmt->execute();
             $updateStmt->close();
 
@@ -82,42 +117,83 @@ class Auth {
         return false;
     }
 
-    public function register($username, $email, $password) {
-        // Ellenőrizzük, hogy a username már létezik-e
-        $stmt = $this->mysqli->prepare("SELECT id FROM users WHERE username = ? LIMIT 1");
-        $stmt->bind_param("s", $username);
-        $stmt->execute();
-        $stmt->store_result();
-        if ($stmt->num_rows > 0) {
-            $stmt->close();
-            return "The username is already in use."; // Megszakítjuk a regisztrációt
-        }
-        $stmt->close();
-
-        // Ellenőrizzük, hogy az email már létezik-e
-        $stmt = $this->mysqli->prepare("SELECT id FROM users WHERE email = ? LIMIT 1");
-        $stmt->bind_param("s", $email);
-        $stmt->execute();
-        $stmt->store_result();
-        if ($stmt->num_rows > 0) {
-            $stmt->close();
-            return "The email address is already in use."; // Megszakítjuk a regisztrációt
-        }
-        $stmt->close();
-
-        // Ha minden rendben, regisztráljuk a felhasználót
-        $passwordHash = password_hash($password, PASSWORD_DEFAULT);
-        $stmt = $this->mysqli->prepare("INSERT INTO users (username, email, password_hash, address, joined) VALUES (?, ?, ?, '', UNIX_TIMESTAMP())");
-        $stmt->bind_param("sss", $username, $email, $passwordHash);
-
-        if ($stmt->execute()) {
-            $_SESSION['user_id'] = $stmt->insert_id;
-            $stmt->close();
-            return true;
-        }
-        $stmt->close();
-        return "An error occurred during registration.";
+public function getClientIP() {
+    if (!empty($_SERVER['HTTP_CLIENT_IP'])) {
+        return $_SERVER['HTTP_CLIENT_IP'];
+    } elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+        // Több IP-cím esetén az első a kliens IP-je
+        $ipList = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
+        return trim($ipList[0]);
+    } else {
+        return $_SERVER['REMOTE_ADDR'];
     }
+}
+
+
+public function register($username, $email, $password) {
+    // HoneyPot check
+    if (!empty($_POST['honeypot'])) {
+        return ['status' => 'error', 'message' => 'Bot detected. Registration failed.'];
+    }
+
+    // hCaptcha check
+    if (!isset($_POST['h-captcha-response']) || !$this->verifyCaptcha($_POST['h-captcha-response'])) {
+        return ['status' => 'error', 'message' => 'Captcha verification failed. Please try again.'];
+    }
+
+    // Username length check
+    if (strlen($username) < 8) {
+        return ['status' => 'error', 'message' => 'Username must be at least 8 characters long.'];
+    }
+
+    // Username cannot be an email
+    if (filter_var($username, FILTER_VALIDATE_EMAIL)) {
+        return ['status' => 'error', 'message' => 'Username cannot be an email address.'];
+    }
+
+    // Email format check
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        return ['status' => 'error', 'message' => 'Please provide a valid email address.'];
+    }
+
+    // Check if username or email already exists
+    $stmt = $this->mysqli->prepare("SELECT id FROM users WHERE username = ? OR email = ?");
+    $stmt->bind_param("ss", $username, $email);
+    $stmt->execute();
+    $stmt->store_result();
+    if ($stmt->num_rows > 0) {
+        return ['status' => 'error', 'message' => 'Username or email already exists.'];
+    }
+    $stmt->close();
+
+    // IP-based registration limitation
+    $ipAddress = $this->getClientIP();
+    $timeLimit = time() - 12 * 60 * 60; // 12 hours
+
+    $stmt = $this->mysqli->prepare("SELECT id FROM users WHERE ip_address = ? AND joined >= ?");
+    $stmt->bind_param("si", $ipAddress, $timeLimit);
+    $stmt->execute();
+    $stmt->store_result();
+
+    if ($stmt->num_rows > 0) {
+        return ['status' => 'error', 'message' => 'Double registration blocked.'];
+    }
+    $stmt->close();
+
+    // Hashing the password
+    $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+    $joined = time();
+
+    // Adding the user to the database
+    $stmt = $this->mysqli->prepare("INSERT INTO users (username, email, password_hash, ip_address, joined) VALUES (?, ?, ?, ?, ?)");
+    $stmt->bind_param("ssssi", $username, $email, $hashedPassword, $ipAddress, $joined);
+
+    if ($stmt->execute()) {
+        return ['status' => 'success', 'message' => 'Registration successful.'];
+    } else {
+        return ['status' => 'error', 'message' => 'Registration failed. Please try again later.'];
+    }
+}
 
     public function sendPasswordRecoveryEmail($email) {
         $stmt = $this->mysqli->prepare("SELECT id FROM users WHERE email = ?");

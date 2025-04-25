@@ -32,8 +32,8 @@ include("header.php");
 
 <div class="row">
 <div class="col-12 col-md-3 text-center p-3">
-         
-        </div>
+
+       </div>
         <div class="col-12 col-md-6 text-center p-3">
     <?php if ($claimMessage): ?>
         <div class="alert alert-<?= $claimMessage['success'] ? 'success' : 'danger' ?>">

@@ -20,6 +20,18 @@ class Session {
             return;
         }
 
+        // Ellenőrizzük az utolsó aktivitást
+        if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > 1800)) {
+            // Ha több mint 1800 másodperc telt el, töröljük a session-t
+            session_unset();
+            session_destroy();
+            header("Location: index.php");
+            exit;
+        }
+
+        // Frissítjük az utolsó aktivitás idejét
+        $_SESSION['last_activity'] = time();
+
         $userId = $_SESSION['user_id']; // Az ID-t használjuk
         $stmt = $this->mysqli->prepare("SELECT * FROM users WHERE id = ?");
         if (!$stmt) {

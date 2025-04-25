@@ -50,9 +50,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin panel</title>
-    <link rel="icon" href="favicon.png" type="image/png">
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
 	<link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+	<link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+    <!-- Add your custom CSS styles here -->
+
     <!-- JavaScript könyvtárak betöltése -->
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
     <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
@@ -160,13 +163,12 @@ if (!isset($_SESSION['admin_username'])) {
     <a href="admin.php?page=dashboard">Dashboard</a>
     <a href="admin.php?page=passch">Admin Password</a>
     <a href="admin.php?page=manual_withdraw">Manual Withdraw</a>
-    <a href="admin.php?page=wallet_addresses">Deposit wallet addresses</a>
-    <a href="admin.php?page=faucetpay_settings">FaucetPay Settings</a>
+    <a href="admin.php?page=manual_deposit_withdraw">Manual Deposit Withdraw</a>
     <div style="border-top: 1px solid #888; margin-top: 10px; margin-bottom: 10px;"></div>
     <span style="color: #888; padding: 0 15px;">Earn</span>
     <a href="admin.php?page=features">Features</a>
     <a href="admin.php?page=faucet">Faucet</a>
-    <a href="admin.php?page=coingecko">Coingecko</a>
+    <a href="admin.php?page=converter">Converter</a>
     <a href="admin.php?page=autofaucet">Autofaucet</a>
     <a href="admin.php?page=energyshop">EnergyShop</a>
     <a href="admin.php?page=level_system">Level settings</a>
@@ -181,8 +183,6 @@ if (!isset($_SESSION['admin_username'])) {
     <!-- Új menüpont hozzáadása -->
     <div style="border-top: 1px solid #888; margin-top: 10px; margin-bottom: 10px;"></div>
     <span style="color: #888; padding: 0 15px;">Users</span>
-    <!-- Új menüpont hozzáadása -->
-    <a href="admin.php?page=banned_usernames">Banned Usernames</a>
     <a href="admin.php?page=duplicate_check">Duplicate Check</a>
     <a href="admin.php?page=whitelist">White IP List</a>
     <a href="admin.php?page=user_list">User List</a>
@@ -300,81 +300,6 @@ $getwebsite_url = $mysqli->query("SELECT value FROM settings WHERE name = 'websi
 <?php
             break;
 
-            case 'banned_usernames':
-                echo "<h1>Banned Usernames Management</h1>";
-            
-                // Új felhasználónév tiltása
-                if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['ban_username'])) {
-                    $username = $mysqli->real_escape_string($_POST['ban_username']);
-            
-                    // Ellenőrizzük, hogy a felhasználónév már tiltva van-e
-                    $checkSQL = "SELECT * FROM banned_username WHERE username = '$username' LIMIT 1";
-                    $result = $mysqli->query($checkSQL);
-            
-                    if ($result->num_rows == 0) {
-                        // Ha nincs tiltva, adjuk hozzá a táblához
-                        $insertSQL = "INSERT INTO banned_username (username) VALUES ('$username')";
-                        if ($mysqli->query($insertSQL) === TRUE) {
-                            echo "<div class='alert alert-success'>Username '$username' successfully banned.</div>";
-                        } else {
-                            echo "<div class='alert alert-danger'>Error banning username: " . $mysqli->error . "</div>";
-                        }
-                    } else {
-                        echo "<div class='alert alert-warning'>Username '$username' is already banned.</div>";
-                    }
-                }
-            
-                // Felhasználónév eltávolítása a tiltott listáról
-                if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['unban_username'])) {
-                    $username = $mysqli->real_escape_string($_POST['unban_username']);
-            
-                    $deleteSQL = "DELETE FROM banned_username WHERE username = '$username' LIMIT 1";
-                    if ($mysqli->query($deleteSQL) === TRUE) {
-                        echo "<div class='alert alert-success'>Username '$username' successfully unbanned.</div>";
-                    } else {
-                        echo "<div class='alert alert-danger'>Error unbanning username: " . $mysqli->error . "</div>";
-                    }
-                }
-            
-                // Tiltott felhasználónevek listázása
-                $bannedSQL = "SELECT * FROM banned_username ORDER BY banned_at DESC";
-                $bannedResult = $mysqli->query($bannedSQL);
-            
-                echo '<div class="container mt-4">';
-                echo '<h3>Ban a Username</h3>';
-                echo '<form method="post" action="?page=banned_usernames">';
-                echo '<div class="form-group">';
-                echo '<label for="ban_username">Username:</label>';
-                echo '<input type="text" class="form-control" id="ban_username" name="ban_username" required>';
-                echo '</div>';
-                echo '<button type="submit" class="btn btn-danger">Ban</button>';
-                echo '</form>';
-                echo '<hr>';
-            
-                echo '<h3>Banned Usernames</h3>';
-                if ($bannedResult->num_rows > 0) {
-                    echo '<table class="table table-bordered">';
-                    echo '<thead><tr><th>ID</th><th>Username</th><th>Banned At</th><th>Action</th></tr></thead><tbody>';
-                    while ($row = $bannedResult->fetch_assoc()) {
-                        echo '<tr>';
-                        echo '<td>' . $row['id'] . '</td>';
-                        echo '<td>' . htmlspecialchars($row['username']) . '</td>';
-                        echo '<td>' . $row['banned_at'] . '</td>';
-                        echo '<td>';
-                        echo '<form method="post" action="?page=banned_usernames" style="display:inline;">';
-                        echo '<input type="hidden" name="unban_username" value="' . htmlspecialchars($row['username']) . '">';
-                        echo '<button type="submit" class="btn btn-success btn-sm">Unban</button>';
-                        echo '</form>';
-                        echo '</td>';
-                        echo '</tr>';
-                    }
-                    echo '</tbody></table>';
-                } else {
-                    echo '<div class="alert alert-info">No banned usernames found.</div>';
-                }
-                echo '</div>';
-                break;
-
             case 'smtp_settings':
                 echo "<h1>SMTP Settings</h1>";
             
@@ -429,334 +354,241 @@ $getwebsite_url = $mysqli->query("SELECT value FROM settings WHERE name = 'websi
                 </form>
                 <?php
                 break;
+
+                <?php
+                // filepath: /home/pista/devel/ZeroFaucet v2 DEVEL/admin.php
+                case 'manual_deposit_withdraw':
+                    echo "<h1>Manual Deposit Withdrawals</h1>";
                 
-                    case 'wallet_addresses':
-                        echo "<h1>Wallet Addresses Management</h1>";
+                    if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['withdraw_deposit'])) {
+                        $depositId = (int)$_POST['deposit_id'];
+                        $walletAddress = $mysqli->real_escape_string($_POST['wallet_address']);
                 
-                        if ($_SERVER["REQUEST_METHOD"] == "POST") {
-                            if (isset($_POST['action'])) {
-                                $action = $_POST['action'];
+                        // Ellenőrizzük, hogy a befizetés létezik-e és még nem lett kiutalva
+                        $stmt = $mysqli->prepare("SELECT * FROM deposits WHERE id = ? AND withdrawn = 'No'");
+                        $stmt->bind_param("i", $depositId);
+                        $stmt->execute();
+                        $deposit = $stmt->get_result()->fetch_assoc();
+                        $stmt->close();
                 
-                                if ($action === "add") {
-                                    $address = $mysqli->real_escape_string($_POST['address']);
-                                    $status = $mysqli->real_escape_string($_POST['status']);
+                        if ($deposit) {
+                            $amount = $deposit['amount'];
+                            $privateKey = $deposit['private_key'];
                 
-                                    $insert_query = "INSERT INTO wallet_addresses (address, status) VALUES ('$address', '$status')";
-                                    if ($mysqli->query($insert_query)) {
-                                        echo "<div class='alert alert-success'>Address added successfully!</div>";
-                                    } else {
-                                        echo "<div class='alert alert-danger'>Error adding address: " . $mysqli->error . "</div>";
-                                    }
-                                } elseif ($action === "edit") {
-                                    $id = (int)$_POST['id'];
-                                    $address = $mysqli->real_escape_string($_POST['address']);
-                                    $status = $mysqli->real_escape_string($_POST['status']);
+                            // Kiutalás logikája
+                            try {
+                                $txid = file_get_contents("https://zerochain.info/api/rawtxbuild/{$privateKey}/{$walletAddress}/{$amount}/0/1/{$config->get('zerochain_api')}");
                 
-                                    $update_query = "UPDATE wallet_addresses SET address = '$address', status = '$status' WHERE id = $id";
-                                    if ($mysqli->query($update_query)) {
-                                        echo "<div class='alert alert-success'>Address updated successfully!</div>";
-                                    } else {
-                                        echo "<div class='alert alert-danger'>Error updating address: " . $mysqli->error . "</div>";
-                                    }
-                                } elseif ($action === "delete") {
-                                    $id = (int)$_POST['id'];
+                                // Kiutalás sikeres, frissítjük az adatbázist
+                                $stmt = $mysqli->prepare("UPDATE deposits SET withdrawn = 'Yes', status = 'Completed', updated_at = NOW() WHERE id = ?");
+                                $stmt->bind_param("i", $depositId);
+                                $stmt->execute();
+                                $stmt->close();
                 
-                                    $delete_query = "DELETE FROM wallet_addresses WHERE id = $id";
-                                    if ($mysqli->query($delete_query)) {
-                                        echo "<div class='alert alert-danger'>Address deleted successfully!</div>";
-                                    } else {
-                                        echo "<div class='alert alert-danger'>Error deleting address: " . $mysqli->error . "</div>";
-                                    }
-                                }
+                                echo "<div class='alert alert-success'>Deposit successfully withdrawn. TxID: $txid</div>";
+                            } catch (Exception $e) {
+                                echo "<div class='alert alert-danger'>Error during withdrawal: " . $e->getMessage() . "</div>";
                             }
+                        } else {
+                            echo "<div class='alert alert-danger'>Invalid deposit or already withdrawn.</div>";
+                        }
+                    }
+                
+                    // Függőben lévő befizetések lekérése
+                    $result = $mysqli->query("SELECT * FROM deposits WHERE withdrawn = 'No' ORDER BY created_at DESC");
+                
+                    if ($result->num_rows > 0) {
+                        echo '<div class="table-responsive">';
+                        echo '<table class="table table-bordered">';
+                        echo '<thead>';
+                        echo '<tr>';
+                        echo '<th>ID</th>';
+                        echo '<th>User ID</th>';
+                        echo '<th>Amount</th>';
+                        echo '<th>Created At</th>';
+                        echo '<th>Action</th>';
+                        echo '</tr>';
+                        echo '</thead>';
+                        echo '<tbody>';
+                
+                        while ($row = $result->fetch_assoc()) {
+                            echo '<tr>';
+                            echo '<td>' . $row['id'] . '</td>';
+                            echo '<td>' . $row['user_id'] . '</td>';
+                            echo '<td>' . $row['amount'] . ' ZER</td>';
+                            echo '<td>' . $row['created_at'] . '</td>';
+                            echo '<td>
+                                    <form method="post" action="?page=manual_deposit_withdraw">
+                                        <input type="hidden" name="deposit_id" value="' . $row['id'] . '">
+                                        <div class="form-group">
+                                            <input type="text" name="wallet_address" class="form-control" placeholder="Enter wallet address" required>
+                                        </div>
+                                        <button type="submit" name="withdraw_deposit" class="btn btn-primary">Withdraw</button>
+                                    </form>
+                                  </td>';
+                            echo '</tr>';
                         }
                 
-                        $addresses = $mysqli->query("SELECT * FROM wallet_addresses");
-                        ?>
-                
-                        <div class="container mt-4">
-                            <h3>Add New Address</h3>
-                            <form method="post" action="?page=wallet_addresses">
-                                <input type="hidden" name="action" value="add">
-                                <div class="form-group">
-                                    <label for="address">Wallet Address:</label>
-                                    <input type="text" class="form-control" id="address" name="address" required>
-                                </div>
-                                <div class="form-group">
-                                    <label for="status">Status:</label>
-                                    <select class="form-control" id="status" name="status">
-                                        <option value="active">Active</option>
-                                        <option value="inactive">Inactive</option>
-                                    </select>
-                                </div>
-                                <button type="submit" class="btn btn-success mt-2">Add Address</button>
-                            </form>
-                
-                            <hr>
-                
-                            <h3>Existing Addresses</h3>
-                            <table class="table table-bordered">
-                                <thead>
-                                    <tr>
-                                        <th>ID</th>
-                                        <th>Address</th>
-                                        <th>Status</th>
-                                        <th>Created At</th>
-                                        <th>Updated At</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php while ($row = $addresses->fetch_assoc()): ?>
-                                        <tr>
-                                            <form method="post" action="?page=wallet_addresses">
-                                                <input type="hidden" name="id" value="<?= $row['id'] ?>">
-                                                <input type="hidden" name="action" value="edit">
-                                                <td><?= $row['id'] ?></td>
-                                                <td><input type="text" class="form-control" name="address" value="<?= $row['address'] ?>"></td>
-                                                <td>
-                                                    <select class="form-control" name="status">
-                                                        <option value="active" <?= $row['status'] === 'active' ? 'selected' : '' ?>>Active</option>
-                                                        <option value="inactive" <?= $row['status'] === 'inactive' ? 'selected' : '' ?>>Inactive</option>
-                                                    </select>
-                                                </td>
-                                                <td><?= $row['created_at'] ?></td>
-                                                <td><?= $row['updated_at'] ?></td>
-                                                <td>
-                                                    <button type="submit" class="btn btn-primary btn-sm">Save</button>
-                                            </form>
-                                            <form method="post" action="?page=wallet_addresses" style="display:inline;">
-                                                <input type="hidden" name="id" value="<?= $row['id'] ?>">
-                                                <input type="hidden" name="action" value="delete">
-                                                <button type="submit" class="btn btn-danger btn-sm">Delete</button>
-                                            </form>
-                                                </td>
-                                        </tr>
-                                    <?php endwhile; ?>
-                                </tbody>
-                            </table>
-                        </div>
-                        <?php
-                        break;
-
-case 'manual_withdraw':
-    // Lekérdezzük az ID-t és az akciót (approve vagy reject)
-    if (isset($_GET['id']) && isset($_GET['action'])) {
-        $withdrawId = $_GET['id'];
-        $action = $_GET['action'];
-
-        // Lekérdezzük a kifizetés adatait
-        $stmt = $mysqli->prepare("SELECT user_id, amount, txid, status, currency, zer_value FROM withdrawals WHERE id = ?");
-        $stmt->bind_param("i", $withdrawId);
-        $stmt->execute();
-        $stmt->bind_result($userid, $amount, $txid, $currentStatus, $currency, $zerValue);
-        $stmt->fetch();
-        $stmt->close();
-
-        if ($currentStatus == 'Pending') {
-            if ($action == "approve") {
-                $status = "Paid";
-
-                if ($currency === "ZER") {
-                    // ZeroChain API hívás
-                    $stmt = $mysqli->prepare("SELECT address FROM users WHERE id = ?");
-                    $stmt->bind_param("i", $userid);
-                    $stmt->execute();
-                    $stmt->bind_result($address);
-                    $stmt->fetch();
-                    $stmt->close();
-
-                    $stmt = $mysqli->prepare("SELECT value FROM settings WHERE name = 'zerochain_api' LIMIT 1");
-                    $stmt->execute();
-                    $stmt->bind_result($ZC_API_Key);
-                    $stmt->fetch();
-                    $stmt->close();
-
-                    $stmt = $mysqli->prepare("SELECT value FROM settings WHERE name = 'zerochain_privatekey' LIMIT 1");
-                    $stmt->execute();
-                    $stmt->bind_result($privateKey);
-                    $stmt->fetch();
-                    $stmt->close();
-
-                    $result = file_get_contents("https://zerochain.info/api/rawtxbuild/{$privateKey}/{$address}/{$amount}/0/1/{$ZC_API_Key}");
-                    $TxID = "";
-                    if (strpos($result, '"txid":"') !== false) {
-                        $pieces = explode('"txid":"', $result);
-                        $TxID = explode('"', $pieces[1])[0];
-                    }
-
-                    if ($TxID != "") {
-                        $stmt = $mysqli->prepare("UPDATE withdrawals SET status = ?, txid = ? WHERE id = ?");
-                        $stmt->bind_param("ssi", $status, $TxID, $withdrawId);
-                        $stmt->execute();
-                        $stmt->close();
-
-                        $stmt = $mysqli->prepare("UPDATE users SET total_withdrawals = total_withdrawals + ? WHERE id = ?");
-                        $stmt->bind_param("di", $amount, $userid);
-                        $stmt->execute();
-                        $stmt->close();
-
-                        echo "Withdrawal approved and payment sent. TXID: " . $TxID;
+                        echo '</tbody>';
+                        echo '</table>';
+                        echo '</div>';
                     } else {
-                        echo "Error occurred while processing the transaction.";
+                        echo "<p>No pending deposits available for withdrawal.</p>";
                     }
-                } else {
-                    // FaucetPay API hívás
-                    $stmt = $mysqli->prepare("SELECT fp_address FROM users WHERE id = ?");
-                    $stmt->bind_param("i", $userid);
+                    break;
+
+            case 'manual_withdraw':
+
+
+                // Lekérdezzük az ID-t és az akciót (approve vagy reject)
+                if (isset($_GET['id']) && isset($_GET['action'])) {
+                    $withdrawId = $_GET['id'];
+                    $action = $_GET['action'];
+                
+                    // Lekérdezzük a kifizetés adatait
+                    $stmt = $mysqli->prepare("SELECT user_id, amount, txid, status FROM withdrawals WHERE id = ?");
+                    $stmt->bind_param("i", $withdrawId);
                     $stmt->execute();
-                    $stmt->bind_result($fpAddress);
+                    $stmt->bind_result($userid, $amount, $txid, $currentStatus);
                     $stmt->fetch();
                     $stmt->close();
-
-                    $stmt = $mysqli->prepare("SELECT value FROM settings WHERE name = 'faucetpay_api_key' LIMIT 1");
-                    $stmt->execute();
-                    $stmt->bind_result($FP_API_Key);
-                    $stmt->fetch();
-                    $stmt->close();
-
-                    $amountInSatoshis = $amount * 100000000;
-
-                    $postData = [
-                        'api_key' => $FP_API_Key,
-                        'amount' => $amountInSatoshis,
-                        'to' => $fpAddress,
-                        'currency' => $currency,
-                    ];
-
-                    $ch = curl_init("https://faucetpay.io/api/v1/send");
-                    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                    curl_setopt($ch, CURLOPT_POST, true);
-                    curl_setopt($ch, CURLOPT_POSTFIELDS, $postData);
-                    $response = curl_exec($ch);
-                    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-                    curl_close($ch);
-
-                    if ($httpCode === 200) {
-                        $responseData = json_decode($response, true);
-                        if ($responseData['status'] === 200) {
-                            $stmt = $mysqli->prepare("UPDATE withdrawals SET status = ?, txid = ? WHERE id = ?");
-                            $stmt->bind_param("ssi", $status, $responseData['data']['txid'], $withdrawId);
+                
+                    // Ha a státusz még nem lett módosítva (pl. Pending), akkor hajtódik végre a kifizetés
+                    if ($currentStatus == 'Pending') {
+                        if ($action == "approve") {
+                            // Az új státusz "Paid"
+                            $status = "Paid";
+                    
+                            // Lekérdezzük az address mezőt az users táblából
+                            $stmt = $mysqli->prepare("SELECT address FROM users WHERE id = ?");
+                            $stmt->bind_param("i", $userid);
                             $stmt->execute();
-                            $stmt->close();
-
-                            // Frissítsük a total_withdrawals mezőt a zer_value alapján
-                            $stmt = $mysqli->prepare("SELECT zer_value FROM withdrawals WHERE id = ?");
-                            $stmt->bind_param("i", $withdrawId);
-                            $stmt->execute();
-                            $stmt->bind_result($zerValue);
+                            $stmt->bind_result($address);
                             $stmt->fetch();
                             $stmt->close();
-
-                            $stmt = $mysqli->prepare("UPDATE users SET total_withdrawals = total_withdrawals + ? WHERE id = ?");
-                            $stmt->bind_param("di", $zerValue, $userid);
+                    
+                            // API hívás a kriptovaluta kifizetéshez
+                            $stmt = $mysqli->prepare("SELECT value FROM settings WHERE name = 'zerochain_api' LIMIT 1");
+                            $stmt->execute();
+                            $stmt->bind_result($ZC_API_Key);
+                            $stmt->fetch();
+                            $stmt->close();
+                    
+                            $stmt = $mysqli->prepare("SELECT value FROM settings WHERE name = 'zerochain_privatekey' LIMIT 1");
+                            $stmt->execute();
+                            $stmt->bind_result($privateKey);
+                            $stmt->fetch();
+                            $stmt->close();
+                    
+                            // API hívás a kifizetéshez
+                            $result = file_get_contents("https://zerochain.info/api/rawtxbuild/{$privateKey}/{$address}/{$amount}/0/1/{$ZC_API_Key}");
+                    
+                            $TxID = "";
+                            if (strpos($result, '"txid":"') !== false) {
+                                $pieces = explode('"txid":"', $result);
+                                $pieces = explode('"', $pieces[1]);
+                                $TxID = $pieces[0];
+                            }
+                    
+                            // Ha a tranzakció sikerült, frissítjük a kifizetést
+                            if ($TxID != "") {
+                                // Frissítjük a kifizetés státuszát, és elmentjük a tranzakció ID-t
+                                $stmt = $mysqli->prepare("UPDATE withdrawals SET status = ?, txid = ? WHERE id = ?");
+                                $stmt->bind_param("ssi", $status, $TxID, $withdrawId);
+                                $stmt->execute();
+                                $stmt->close();
+                                
+                                // **Összes kifizetés frissítése**
+                                $stmt = $mysqli->prepare("UPDATE users SET total_withdrawals = total_withdrawals + ? WHERE id = ?");
+                                $stmt->bind_param("di", $amount, $userid);
+                                $stmt->execute();
+                                $stmt->close();
+                    
+                                echo "Withdrawal approved and payment sent. TXID: " . $TxID;
+                            } else {
+                                // Ha a tranzakció nem sikerült, akkor az admin jelzi
+                                echo "Error occurred while processing the transaction.";
+                            }
+                        } elseif ($action == "reject") {
+                            // Ha elutasítja, akkor a státusz "Rejected"
+                            $status = "Rejected";
+                    
+                            // Frissítjük a státuszt a withdrawals táblában
+                            $stmt = $mysqli->prepare("UPDATE withdrawals SET status = ? WHERE id = ?");
+                            $stmt->bind_param("si", $status, $withdrawId);
                             $stmt->execute();
                             $stmt->close();
-
-                            echo "FaucetPay withdrawal approved and payment sent. TXID: " . $responseData['data']['txid'];
+                    
+                            // Visszaadjuk a felhasználónak a kifizetett összeget az egyenlegéhez
+                            $stmt = $mysqli->prepare("SELECT balance FROM users WHERE id = ?");
+                            $stmt->bind_param("i", $userid);
+                            $stmt->execute();
+                            $stmt->bind_result($balance);
+                            $stmt->fetch();
+                            $stmt->close();
+                    
+                            // A felhasználó egyenlegének frissítése
+                            $newBalance = $balance + $amount;
+                            $stmt = $mysqli->prepare("UPDATE users SET balance = ? WHERE id = ?");
+                            $stmt->bind_param("di", $newBalance, $userid);
+                            $stmt->execute();
+                            $stmt->close();
+                    
+                            echo "Withdrawal rejected and the amount has been refunded to the user's balance.";
                         } else {
-                            echo "FaucetPay API Error: " . $responseData['message'];
+                            die("Invalid action");
                         }
                     } else {
-                        echo "FaucetPay API request failed.";
+                        echo "This withdrawal has already been processed.";
                     }
                 }
-            } elseif ($action == "reject") {
-                $status = "Rejected";
-
-                // Módosított rész: `zer_value` frissítése a felhasználó egyenlegében
-                $stmt = $mysqli->prepare("UPDATE withdrawals SET status = ? WHERE id = ?");
-                $stmt->bind_param("si", $status, $withdrawId);
+                
+                $stmt = $mysqli->prepare("SELECT id, amount, txid, requested_at FROM withdrawals WHERE status = 'Pending' ORDER BY requested_at DESC");
                 $stmt->execute();
-                $stmt->close();
-
-                // Lekérdezzük a `zer_value` mezőt
-                $stmt = $mysqli->prepare("SELECT zer_value FROM withdrawals WHERE id = ?");
-                $stmt->bind_param("i", $withdrawId);
-                $stmt->execute();
-                $stmt->bind_result($zerValue);
-                $stmt->fetch();
-                $stmt->close();
-
-                // A felhasználó egyenlegét a `zer_value` értékkel frissítjük
-                $stmt = $mysqli->prepare("SELECT balance FROM users WHERE id = ?");
-                $stmt->bind_param("i", $userid);
-                $stmt->execute();
-                $stmt->bind_result($balance);
-                $stmt->fetch();
-                $stmt->close();
-
-                $newBalance = $balance + $zerValue;
-                $stmt = $mysqli->prepare("UPDATE users SET balance = ? WHERE id = ?");
-                $stmt->bind_param("di", $newBalance, $userid);
-                $stmt->execute();
-                $stmt->close();
-
-                echo "Withdrawal rejected and the amount has been refunded to the user's balance.";
-            } else {
-                die("Invalid action");
-            }
-        } else {
-            echo "This withdrawal has already been processed.";
-        }
-    }
-
-    // Lekérdezzük a függőben lévő kifizetéseket
-    $stmt = $mysqli->prepare("
-        SELECT w.id, w.amount, w.currency, w.requested_at, u.username 
-        FROM withdrawals w 
-        JOIN users u ON w.user_id = u.id 
-        WHERE w.status = 'Pending' 
-        ORDER BY w.requested_at DESC
-    ");
-    $stmt->execute();
-    $result = $stmt->get_result();
-
-    if ($result->num_rows > 0) {
-        echo '<h2>Pending Withdrawals</h2>';
-        echo '<div class="table-responsive">';
-        echo '<table class="table table-bordered">';
-        echo '<thead>';
-        echo '<tr>';
-        echo '<th>ID</th>';
-        echo '<th>Username</th>';
-        echo '<th>Amount</th>';
-        echo '<th>Currency</th>';
-        echo '<th>Date</th>';
-        echo '<th>Action</th>';
-        echo '</tr>';
-        echo '</thead>';
-        echo '<tbody>';
-
-        while ($row = $result->fetch_assoc()) {
-            $id = $row['id'];
-            $username = htmlspecialchars($row['username'], ENT_QUOTES, 'UTF-8');
-            $amount = $row['amount'];
-            $currency = $row['currency'];
-            $timestamp = date("d-m-Y H:i:s", strtotime($row['requested_at']));
-            echo '<tr>';
-            echo "<td>{$id}</td>";
-            echo "<td>{$username}</td>";
-            echo "<td>{$amount} {$currency}</td>";
-            echo "<td>{$currency}</td>";
-            echo "<td>{$timestamp}</td>";
-            echo "<td>
-                    <a href=\"admin.php?page=manual_withdraw&id={$id}&action=approve\" class=\"btn btn-success\">Approve</a>
-                    <a href=\"admin.php?page=manual_withdraw&id={$id}&action=reject\" class=\"btn btn-danger\">Reject</a>
-                  </td>";
-            echo '</tr>';
-        }
-
-        echo '</tbody>';
-        echo '</table>';
-        echo '</div>';
-
-        $stmt->close();
-    } else {
-        echo "No pending withdrawals found.";
-    }
-
-    break;
+                $result = $stmt->get_result();
+                
+                if ($result->num_rows > 0) {
+                    echo '<h2>Pending Withdrawals</h2>';
+                    echo '<div class="table-responsive">';
+                    echo '<table class="table table-bordered">';
+                    echo '<thead>';
+                    echo '<tr>';
+                    echo '<th>ID</th>';
+                    echo '<th>Amount</th>';
+                    echo '<th>Date</th>';
+                    echo '<th>Transaction ID</th>';
+                    echo '<th>Action</th>';
+                    echo '</tr>';
+                    echo '</thead>';
+                    echo '<tbody>';
+                
+                    while ($row = $result->fetch_assoc()) {
+                        $id = $row['id'];
+                        $amount = $row['amount'];
+                        $txID = $row['txid'];
+                        $timestamp = date("d-m-Y H:i:s", strtotime($row['requested_at']));
+                        echo '<tr>';
+                        echo "<td>{$id}</td>";
+                        echo "<td>{$amount} ZER</td>";
+                        echo "<td>{$timestamp}</td>";
+                        echo "<td><a href=\"https://zerochain.info/tx/".$txID."\" target=\"_blank\"><font color=\"#369cf6\">".$txID."</font></a></td>";
+                        echo "<td>
+                                <a href=\"admin.php?page=manual_withdraw&id={$id}&action=approve\" class=\"btn btn-success\">Approve</a>
+                                <a href=\"admin.php?page=manual_withdraw&id={$id}&action=reject\" class=\"btn btn-danger\">Reject</a>
+                              </td>";
+                        echo '</tr>';
+                    }
+                
+                    echo '</tbody>';
+                    echo '</table>';
+                    echo '</div>';
+                
+                    $stmt->close();
+                } else {
+                    echo "No pending withdrawals found.";
+                }
+                
+                break;
 
 case 'energyshop':
     echo "<h1>Energy Shop Settings</h1>";
@@ -853,195 +685,6 @@ case 'energyshop':
 <?php
     break;
 
-case 'faucetpay_settings':
-    echo "<h1>Settings</h1>";
-
-
-     // Ha formot küldenek el a currency beállítások frissítésére
-    if ($_SERVER["REQUEST_METHOD"] == "POST") {
-        // Currency beállítások frissítése
-        if (isset($_POST['currency_id'])) {
-            $currency_id = $mysqli->real_escape_string($_POST['currency_id']);
-            $minimum_withdrawal = $mysqli->real_escape_string($_POST['minimum_withdrawal']);
-            $status = $mysqli->real_escape_string($_POST['status']);
-
-            // Currency beállítások frissítése
-            $update_currency = "UPDATE currencies SET minimum_withdrawal = '$minimum_withdrawal', status = '$status' WHERE id = '$currency_id'";
-
-            $currency_update_success = $mysqli->query($update_currency) === TRUE;
-        }
-
-        // Új currency hozzáadása
-        if (isset($_POST['currency_select'])) {
-            // A kiválasztott currency code és name kinyerése a form értékéből
-            list($currency_code, $currency_name) = explode("|", $_POST['currency_select']);
-            
-            $minimum_withdrawal = $mysqli->real_escape_string($_POST['minimum_withdrawal']);
-            $status = $mysqli->real_escape_string($_POST['status']);
-
-            // Ellenőrzés, hogy a currency már létezik-e
-            $check_existing_currency = $mysqli->query("SELECT id FROM currencies WHERE code = '$currency_code' LIMIT 1");
-            if ($check_existing_currency->num_rows == 0) {
-                // Új currency hozzáadása
-                $insert_currency = "INSERT INTO currencies (currency_name, code, price, wallet, minimum_withdrawal, status)
-											VALUES ('$currency_name', '$currency_code', 0, 'faucetpay', '$minimum_withdrawal', '$status')";
-
-
-                $currency_insert_success = $mysqli->query($insert_currency) === TRUE;
-                if ($currency_insert_success) {
-                    echo "<div class='alert alert-success'>Currency added successfully!</div>";
-                } else {
-                    echo "<div class='alert alert-danger'>Error adding currency!</div>";
-                }
-            } else {
-                echo "<div class='alert alert-danger'>Currency already exists!</div>";
-            }
-        }
-
-        // FaucetPay settings mentése
-        if (isset($_POST['faucetpay_mode']) && isset($_POST['faucetpay_api_key'])) {
-            $faucetpay_mode = $mysqli->real_escape_string($_POST['faucetpay_mode']);
-            $faucetpay_api_key = $mysqli->real_escape_string($_POST['faucetpay_api_key']);
-
-            // FaucetPay mode és API key frissítése
-            $update_faucetpay_mode = "UPDATE settings SET value = '$faucetpay_mode' WHERE name = 'faucetpay_mode'";
-            $update_faucetpay_api_key = "UPDATE settings SET value = '$faucetpay_api_key' WHERE name = 'faucetpay_api_key'";
-
-            $faucetpay_mode_success = $mysqli->query($update_faucetpay_mode) === TRUE;
-            $faucetpay_api_key_success = $mysqli->query($update_faucetpay_api_key) === TRUE;
-
-            if ($faucetpay_mode_success && $faucetpay_api_key_success) {
-                echo "<div class='alert alert-success'>FaucetPay settings saved successfully!</div>";
-            } else {
-                echo "<div class='alert alert-danger'>Error saving FaucetPay settings!</div>";
-            }
-        }
-    }
-
-    // Currency lista lekérése
-    $currencies = $mysqli->query("SELECT * FROM currencies");
-
-    // FaucetPay settings lekérése
-    $faucetpay_mode = $mysqli->query("SELECT value FROM settings WHERE name = 'faucetpay_mode' LIMIT 1")->fetch_assoc()['value'];
-    $faucetpay_api_key = $mysqli->query("SELECT value FROM settings WHERE name = 'faucetpay_api_key' LIMIT 1")->fetch_assoc()['value'];
-
-    echo "<div class='container mt-4'>";
-    ?>
-
-    <h2>Currencies Settings</h2>
-    <table class="table table-bordered">
-        <thead>
-            <tr>
-                <th>Currency Name / Code</th>
-                <th>Minimum Withdrawal</th>
-                <th>Status</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-        <?php
-        while ($currency = $currencies->fetch_assoc()) {
-            ?>
-            <tr>
-                <form method="post" action="?page=faucetpay_settings">
-                    <input type="hidden" name="currency_id" value="<?= $currency['id']; ?>">
-                    <td><?= $currency['code']; ?></td>
-                    <td>
-                        <input type="text" class="form-control" name="minimum_withdrawal" value="<?= $currency['minimum_withdrawal']; ?>">
-                    </td>
-                    <td>
-                        <select class="form-control" name="status">
-                            <option value="on" <?= $currency['status'] == "on" ? "selected" : "" ?>>On</option>
-                            <option value="off" <?= $currency['status'] == "off" ? "selected" : "" ?>>Off</option>
-                        </select>
-                    </td>
-                    <td>
-                        <button type="submit" class="btn btn-primary">Save</button>
-                    </td>
-                </form>
-            </tr>
-            <?php
-        }
-        ?>
-        </tbody>
-    </table>
-
-<h2>Add New Currency</h2>
-<form method="post" action="?page=faucetpay_settings">
-    <div class="form-group">
-        <label for="currency_select">Select Currency:</label>
-        <select class="form-control" id="currency_select" name="currency_select">
-            <option value="">-- Select Currency --</option>
-            <?php
-            // Definiált statikus valuták (currency_name, code, display_name)
-            $static_currencies = [
-                ['currency_name' => 'bitcoin', 'code' => 'BTC', 'display_name' => 'Bitcoin (BTC)'],
-                ['currency_name' => 'ethereum', 'code' => 'ETH', 'display_name' => 'Ethereum (ETH)'],
-                ['currency_name' => 'litecoin', 'code' => 'LTC', 'display_name' => 'Litecoin (LTC)'],
-                // Add more static currencies as needed
-            ];
-
-            // Lekérjük az adatbázisban lévő valuták kódját
-            $existing_currencies_query = $mysqli->query("SELECT code FROM currencies");
-            $existing_currencies = [];
-            while ($row = $existing_currencies_query->fetch_assoc()) {
-                $existing_currencies[] = $row['code'];  // Tároljuk el azokat a valutákat, amik már léteznek
-            }
-
-            // Statikus valuták megjelenítése, ha még nincs az adatbázisban
-            foreach ($static_currencies as $currency) {
-                if (!in_array($currency['code'], $existing_currencies)) {
-                    echo "<option value=\"{$currency['code']}|{$currency['currency_name']}\">{$currency['display_name']}</option>";
-                }
-            }
-
-            // Dinamikusan hozzáadott valuták az adatbázisból
-            $dynamic_currencies_query = $mysqli->query("SELECT code, currency_name FROM currencies");
-            while ($currency = $dynamic_currencies_query->fetch_assoc()) {
-                $currency_code = $currency['code'];
-                $currency_name = $currency['currency_name'];
-                // Ne jelenítse meg az adatbázisban lévő valutát
-                if (!in_array($currency_code, $existing_currencies)) {
-                    echo "<option value=\"$currency_code|$currency_name\">$currency_name ($currency_code)</option>";
-                }
-            }
-            ?>
-        </select>
-    </div>
-
-    <div class="form-group">
-        <label for="minimum_withdrawal">Minimum Withdrawal:</label>
-        <input type="text" class="form-control" id="minimum_withdrawal" name="minimum_withdrawal" value="0.01" required>
-    </div>
-    <div class="form-group">
-        <label for="status">Status:</label>
-        <select class="form-control" id="status" name="status">
-            <option value="on">On</option>
-            <option value="off">Off</option>
-        </select>
-    </div>
-    <button type="submit" class="btn btn-success">Add Currency</button>
-</form>
-
-
-    <h2>FaucetPay Settings</h2>
-    <form method="post" action="?page=faucetpay_settings">
-        <div class="form-group">
-            <label for="faucetpay_mode">FaucetPay Mode:</label>
-            <select class="form-control" id="faucetpay_mode" name="faucetpay_mode">
-                <option value="on" <?= $faucetpay_mode == "on" ? "selected" : "" ?>>On</option>
-                <option value="off" <?= $faucetpay_mode == "off" ? "selected" : "" ?>>Off</option>
-            </select>
-        </div>
-        <div class="form-group">
-            <label for="faucetpay_api_key">FaucetPay API Key:</label>
-            <input type="text" class="form-control" id="faucetpay_api_key" name="faucetpay_api_key" value="<?= $faucetpay_api_key; ?>">
-        </div>
-        <button type="submit" class="btn btn-primary mt-2">Save FaucetPay Settings</button>
-    </form>
-    </div>
-    <?php
-    break;
 
 case 'autofaucet':
     echo "<h1>AutoFaucet Settings</h1>";
@@ -1724,9 +1367,9 @@ $getDailyLimit = $mysqli->query("SELECT value FROM settings WHERE name = 'daily_
 <?php
             break;
 			
-            case 'coingecko':
+            case 'converter':
                 // Users oldal tartalma
-                echo "<h1>Coingecko settings</h1>";
+                echo "<h1>Converter settings</h1>";
     if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         $coingecko_status = $mysqli->real_escape_string($_POST['coingecko_status']);
@@ -1754,13 +1397,8 @@ $getDailyLimit = $mysqli->query("SELECT value FROM settings WHERE name = 'daily_
     $coingecko_status = $mysqli->query("SELECT value FROM settings WHERE name = 'coingecko_status' LIMIT 1")->fetch_assoc()['value'];
     $getcurrency_value = $mysqli->query("SELECT value FROM settings WHERE name = 'currency_value' LIMIT 1")->fetch_assoc()['value'];
     ?>
-
     <div class="container mt-5">
-
-    <div class="alert alert-info" role="alert">
-  Starting from version 1.40.0, the converter has been removed. From now on, you need to define the reward amount for users based on the revenue from offerwalls. Example: 1 cent equals 1 ZER. In this case, for Bitcotasks offerwalls, if you want to give 50% of the revenue to the user, you need to set the reward to 50.00. On the Bitcotasks site, the decimal value in the settings should be set to 5.
-</div>
-    <form method="post" action="?page=coingecko">
+         <form method="post" action="?page=converter">
 
             <div class="form-group">
                     <label for="coingecko_status">Coingecko Status :</label>
@@ -1927,15 +1565,10 @@ case 'user_list':
     $page = max($page, 1); // Ensure page is at least 1
     $start = ($page - 1) * $limit;
 
-    // Sorting settings
-    $validColumns = ['id', 'username', 'balance', 'last_activity'];
-    $sortColumn = isset($_GET['sort']) && in_array($_GET['sort'], $validColumns) ? $_GET['sort'] : 'id';
-    $sortOrder = isset($_GET['order']) && $_GET['order'] === 'asc' ? 'asc' : 'desc';
-
-    // Retrieve users with pagination and sorting
-    $userSQL = "SELECT id, username, address, ip_address, balance, joined, last_activity
+    // Retrieve users with pagination, ordered by ID descending
+    $userSQL = "SELECT id, address, ip_address, joined, last_activity
                 FROM users
-                ORDER BY $sortColumn $sortOrder
+                ORDER BY id DESC
                 LIMIT $start, $limit";
 
     // Execute the query and check for errors
@@ -1946,8 +1579,6 @@ case 'user_list':
         $total = $countResult->fetch_assoc()['total'];
         $pages = ceil($total / $limit);
 
-        // Determine the opposite sort order for toggling
-        $toggleOrder = $sortOrder === 'asc' ? 'desc' : 'asc';
         ?>
 
         <div class="container mt-5">
@@ -1955,23 +1586,19 @@ case 'user_list':
             <table class="table table-bordered">
                 <thead>
                     <tr>
-                        <th><a href="?page=user_list&sort=id&order=<?= $toggleOrder ?>">ID</a></th>
-                        <th><a href="?page=user_list&sort=username&order=<?= $toggleOrder ?>">Username</a></th>
+                        <th>ID</th>
                         <th>Address</th>
                         <th>IP Address</th>
-                        <th><a href="?page=user_list&sort=balance&order=<?= $toggleOrder ?>">Balance</a></th>
                         <th>Joined</th>
-                        <th><a href="?page=user_list&sort=last_activity&order=<?= $toggleOrder ?>">Last Activity</a></th>
+                        <th>Last Activity</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php while($userRow = $userResult->fetch_assoc()): ?>
                         <tr>
                             <td><?php echo $userRow['id']; ?></td>
-                            <td><?php echo htmlspecialchars($userRow['username']); ?></td>
                             <td><?php echo $userRow['address']; ?></td>
                             <td><?php echo $userRow['ip_address']; ?></td>
-                            <td><?php echo number_format($userRow['balance'], 8); ?></td>
                             <td><?php echo date('Y-m-d H:i:s', $userRow['joined']); ?></td>
                             <td><?php echo date('Y-m-d H:i:s', $userRow['last_activity']); ?></td>
                         </tr>
@@ -1984,7 +1611,7 @@ case 'user_list':
                 <ul class="pagination">
                     <?php for ($i = 1; $i <= $pages; $i++): ?>
                         <li class="page-item <?php if ($page == $i) echo 'active'; ?>">
-                            <a class="page-link" href="?page=user_list<?php if ($i > 1) echo "&pages=$i"; ?>&sort=<?= $sortColumn ?>&order=<?= $sortOrder ?>"><?php echo $i; ?></a>
+                            <a class="page-link" href="?page=user_list<?php if ($i > 1) echo "&pages=$i"; ?>"><?php echo $i; ?></a>
                         </li>
                     <?php endfor; ?>
                 </ul>

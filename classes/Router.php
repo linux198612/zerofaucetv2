@@ -20,7 +20,8 @@ class Router {
         'deposit' => 'Deposit',
         'ptc' => 'PTC Ads',
         'advertise' => 'Advertise',
-        'settings' => 'Settings'
+        'settings' => 'Settings',
+        'iframe_view' => 'PTC'
     ];
 
     private $publicPages = [
@@ -64,6 +65,7 @@ class Router {
             exit;
         }
 
+        error_log("Access denied or page not found for: {$page}");
         // Ha egyik sem létezik → 404
         return "views/404.php";
     }

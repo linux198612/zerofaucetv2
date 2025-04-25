@@ -10,6 +10,7 @@ $lastCheckTime = $dashboard->getLastCheckTime();
 
 $levelSystemEnabled = $config->get('level_system') === "on";
 $depositStatus = $config->get('deposit_status') === "on";
+$faucetpayMode = $config->get('faucetpay_mode') === "on";
 $userDeposit = $depositStatus ? Core::sanitizeOutput(number_format($user->getUserData('deposit'), 8)) : null;
 
 // Szintlépés adatok
@@ -36,6 +37,11 @@ $referralCount = Core::sanitizeOutput($dashboard->getReferralCount($user->getUse
 $referralEarnings = Core::sanitizeOutput(number_format($dashboard->getReferralEarnings($user->getUserData('id')), 8));
 $userBalance = Core::sanitizeOutput(number_format($user->getUserData('balance'), 8));
 $userEnergy = Core::sanitizeOutput($user->getUserData('energy'));
+
+$prices = Core::getCurrencyPrices($mysqli);
+$zerBalance = $user->getUserData('balance');
+
+// Eltávolítjuk a $currencyOptions tömböt és a hozzá tartozó SQL-lekérdezést
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['migrate_data'])) {
     // Adatok migrációja az oldusers táblából
@@ -85,16 +91,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['migrate_data'])) {
     }
 }
 
-// Ellenőrizzük, hogy van-e az oldusers táblában az address, és hogy még nem migrálták
+// Ellenőrizzük, hogy van-e az oldusers tábla, és hogy van-e még nem migrált cím
 $oldUserData = null;
-$userAddress = $user->getUserData('address'); // Helyes metódushívás az address eléréséhez
+$userAddress = $user->getUserData('address');
+
 if (!empty($userAddress) && strpos($userAddress, '-migrated') === false) {
-    $stmt = $mysqli->prepare("SELECT address, balance, level, xp, joined, energy FROM oldusers WHERE address = ? LIMIT 1");
-    $stmt->bind_param("s", $userAddress);
-    $stmt->execute();
-    $oldUserData = $stmt->get_result()->fetch_assoc();
-    $stmt->close();
+    $table_check = $mysqli->query("SHOW TABLES LIKE 'oldusers'");
+    if ($table_check && $table_check->num_rows > 0) {
+        $stmt = $mysqli->prepare("SELECT address, balance, level, xp, joined, energy FROM oldusers WHERE address = ? LIMIT 1");
+        $stmt->bind_param("s", $userAddress);
+        $stmt->execute();
+        $oldUserData = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+    }
 }
+
 
 include("header.php");
 ?>
@@ -123,9 +134,47 @@ include("header.php");
         <div class="dashboard-left">
             <div class="currency-info">
                 <h5>Currency Info</h5>
-                <p class="value"><?= Core::sanitizeOutput(number_format($currencyValue, 5)) ?> USD</p>
-                <?php if ($coingecko_status == "on"): ?>
-                    <p class="last-update">Last Update: <?= Core::sanitizeOutput($lastCheckTime) ?></p>
+                <div class="zer-currency">
+                    <img src="images/ZER.png" alt="ZER" class="currency-logo">
+                    <div class="currency-details">
+                        <p class="currency-name">ZER</p>
+                        <p class="value"><?= Core::sanitizeOutput(number_format($currencyValue, 5)) ?> USD</p>
+                        <?php if ($coingecko_status == "on"): ?>
+                            <p class="last-update">Last Update: <?= Core::sanitizeOutput($lastCheckTime) ?></p>
+                        <?php endif; ?>
+                    </div>
+                </div>
+
+                <?php if ($faucetpayMode): ?>
+                    <?php
+                    // Faucetpay mód aktív valuták megjelenítése
+                    $stmt = $mysqli->prepare("SELECT currency_name, code, price FROM currencies WHERE status = 'on' AND wallet = 'faucetpay'");
+                    $stmt->execute();
+                    $result = $stmt->get_result();
+                    $faucetpayCurrencies = [];
+                    while ($row = $result->fetch_assoc()) {
+                        $row['price'] = rtrim(rtrim(number_format($row['price'], 6), '0'), '.'); // Nullák eltávolítása
+                        $faucetpayCurrencies[] = $row;
+                    }
+                    $stmt->close();
+                    ?>
+
+                    <?php if (!empty($faucetpayCurrencies)): ?>
+                        <div class="faucetpay-currencies">
+                            <h6>FaucetPay Currencies</h6>
+                            <div class="currency-list">
+                                <?php foreach ($faucetpayCurrencies as $currency): ?>
+                                    <div class="currency-item">
+                                        <img src="images/<?= Core::sanitizeOutput($currency['code']) ?>.png" alt="<?= Core::sanitizeOutput($currency['currency_name']) ?>" class="currency-logo">
+                                        <div class="currency-details">
+                                            <span class="currency-name"><?= Core::sanitizeOutput($currency['currency_name']) ?></span>
+                                            <span class="currency-price"><?= Core::sanitizeOutput($currency['price']) ?> USD</span>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                    <?php endif; ?>
                 <?php endif; ?>
             </div>
 
@@ -348,6 +397,82 @@ include("header.php");
     font-size: 12px;
     fill: #666;
     text-anchor: middle;
+}
+
+/* FaucetPay Currencies Styles */
+.faucetpay-currencies {
+    margin-top: 20px;
+}
+.currency-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+.currency-item {
+    display: flex;
+    align-items: center;
+    background: #f9f9f9;
+    border-radius: 8px;
+    padding: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    flex: 1 1 calc(33.333% - 15px); /* Három elem egy sorban */
+    max-width: calc(33.333% - 15px);
+}
+.currency-logo {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+    margin-right: 10px;
+}
+.currency-details {
+    display: flex;
+    flex-direction: column;
+}
+.currency-name {
+    font-weight: bold;
+    color: #333;
+}
+.currency-price {
+    font-size: 0.9rem;
+    color: #888;
+}
+
+/* ZER Currency Styles */
+.zer-currency {
+    display: flex;
+    align-items: center;
+    background: #f9f9f9;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    width: 100%; /* Kitölti a rendelkezésre álló helyet */
+    margin-bottom: 20px;
+}
+.zer-currency .currency-logo {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+    margin-right: 20px;
+}
+.zer-currency .currency-details {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1; /* A szöveg kitölti a helyet */
+}
+.zer-currency .currency-name {
+    font-weight: bold;
+    font-size: 1rem;
+    color: #333;
+    margin-bottom: 10px;
+}
+.zer-currency .value {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #007bff;
+}
+.zer-currency .last-update {
+    font-size: 1rem;
+    color: #888;
 }
 </style>
 

@@ -3,7 +3,7 @@
 class Core {
     private $mysqli;
     private $sessionTimeout = 1800; // 30 perc session timeout
-    private $version = "1.40.3";
+    private $version = "1.41.0";
     private $config;
 
     public function __construct($mysqli) {
@@ -152,6 +152,89 @@ class Core {
         $stmt->bind_param('s', $timeNow);
         $stmt->execute();
         $stmt->close();
+    }
+
+    public function updateCurrenciesPrices() {
+        // Lekérdezés a currencies táblából
+        $stmt = $this->mysqli->prepare("SELECT id, currency_name, timestamp FROM currencies WHERE status = 'on'");
+        if (!$stmt) {
+            error_log("SQL Error in updateCurrenciesPrices (prepare): " . $this->mysqli->error);
+            return;
+        }
+
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if (!$result) {
+            error_log("SQL Error in updateCurrenciesPrices (execute): " . $stmt->error);
+            $stmt->close();
+            return;
+        }
+
+        $currencies = [];
+        $currentTime = time();
+        while ($row = $result->fetch_assoc()) {
+            // Csak akkor adjuk hozzá a frissítendő valuták listájához, ha az utolsó frissítés óta eltelt legalább egy óra
+            if ($currentTime - (int)$row['timestamp'] >= 3600) {
+                $currencies[$row['id']] = strtolower($row['currency_name']);
+            }
+        }
+        $stmt->close();
+
+        // Ha nincs frissítendő valuta, térjünk vissza
+        if (empty($currencies)) {
+            return;
+        }
+
+        $currencyList = implode(',', $currencies);
+        $apiUrl = "https://api.coingecko.com/api/v3/simple/price?ids={$currencyList}&vs_currencies=usd";
+        $ch = curl_init($apiUrl);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode !== 200 || !$response) {
+            error_log("Failed to fetch CoinGecko prices. HTTP Code: $httpCode. Response: " . ($response ?: "No response"));
+            return;
+        }
+
+        $data = json_decode($response, true);
+        if (!$data || !is_array($data)) {
+            return;
+        }
+
+        $stmt = $this->mysqli->prepare("UPDATE currencies SET price = ?, timestamp = ? WHERE id = ?");
+        if (!$stmt) {
+            error_log("SQL Error in updateCurrenciesPrices (prepare update): " . $this->mysqli->error);
+            return;
+        }
+
+        foreach ($currencies as $id => $currencyName) {
+            if (isset($data[$currencyName]['usd'])) {
+                $price = round($data[$currencyName]['usd'], 6);
+                $timestamp = $currentTime;
+                $stmt->bind_param('dii', $price, $timestamp, $id);
+                if (!$stmt->execute()) {
+                    error_log("Failed to update price for $currencyName. Error: " . $stmt->error);
+                }
+            } else {
+                error_log("Price data for $currencyName is missing in the CoinGecko response.");
+            }
+        }
+        $stmt->close();
+    }
+
+    public static function getCurrencyPrices($mysqli) {
+        $prices = [];
+        $stmt = $mysqli->prepare("SELECT code, price FROM currencies WHERE status = 'on'");
+        $stmt->execute();
+        $result = $stmt->get_result();
+        while ($row = $result->fetch_assoc()) {
+            $prices[$row['code']] = (float)$row['price']; // Árfolyamok betöltése a currencies táblából
+        }
+        $stmt->close();
+        return $prices;
     }
 
     public function getVersion() {

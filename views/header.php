@@ -272,8 +272,7 @@ background: #343a40;
 </nav>
 
         <section>
-        <div class="text-center">
-</div>
+
 
 
 

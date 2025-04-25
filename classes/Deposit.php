@@ -59,68 +59,53 @@ class Deposit {
     }
 
     public function generateNewAddress($userId) {
-        $stmt = $this->mysqli->prepare("SELECT status FROM deposits WHERE user_id = ? ORDER BY created_at DESC LIMIT 1");
-        $stmt->bind_param("i", $userId);
+        $stmt = $this->mysqli->prepare("SELECT id, address FROM wallet_addresses WHERE status = 'active' LIMIT 1");
         $stmt->execute();
         $result = $stmt->get_result();
-        $lastDeposit = $result->fetch_assoc();
+        $wallet = $result->fetch_assoc();
         $stmt->close();
 
-        if ($lastDeposit && $lastDeposit['status'] === 'Pending') {
-            throw new Exception("You already have a pending deposit address.");
+        if (!$wallet) {
+            throw new Exception("Currently, there are no available wallet addresses for deposits. Please try requesting a wallet address later for your deposit.");
         }
 
-        $existingDeposit = $this->getActiveDepositAddress($userId);
-        if ($existingDeposit) {
-            return $existingDeposit['address'];
-        }
+        $expiresAt = (new DateTime())->modify('+24 hours')->format('Y-m-d H:i:s');
+        $stmt = $this->mysqli->prepare("INSERT INTO deposits (user_id, wallet_id, address, expires_at) VALUES (?, ?, ?, ?)");
+        $stmt->bind_param("iiss", $userId, $wallet['id'], $wallet['address'], $expiresAt);
+        $stmt->execute();
+        $stmt->close();
 
-        try {
-            $data = $this->callZeroChainApi('getnewaddress');
-            if (isset($data['address']) && isset($data['private_key'])) {
-                $address = $data['address'];
-                $privateKey = $data['private_key'];
-                $expiresAt = (new DateTime())->modify('+24 hours')->format('Y-m-d H:i:s');
+        $stmt = $this->mysqli->prepare("UPDATE wallet_addresses SET status = 'inactive' WHERE id = ?");
+        $stmt->bind_param("i", $wallet['id']);
+        $stmt->execute();
+        $stmt->close();
 
-                $stmt = $this->mysqli->prepare("INSERT INTO deposits (user_id, address, private_key, expires_at) VALUES (?, ?, ?, ?)");
-                $stmt->bind_param("isss", $userId, $address, $privateKey, $expiresAt);
-                $stmt->execute();
-                $stmt->close();
-
-                return $address;
-            } else {
-                throw new Exception("Failed to retrieve address or private key from ZeroChain API");
-            }
-        } catch (Exception $e) {
-            error_log("Error generating new address for user $userId: " . $e->getMessage());
-            throw new Exception("Error generating new address: " . $e->getMessage());
-        }
+        return $wallet['address'];
     }
 
     public function checkDeposits() {
-        $urlTemplate = "https://zerochain.info/api/addressbalance/%s/{$this->apiKey}";
         $now = new DateTime();
         $threshold = (clone $now)->modify('-24 hours');
 
-        $stmt = $this->mysqli->query("SELECT * FROM deposits WHERE status = 'Pending'");
+        $stmt = $this->mysqli->query("SELECT d.id, d.wallet_id, d.address, d.created_at FROM deposits d WHERE d.status = 'Pending'");
         while ($deposit = $stmt->fetch_assoc()) {
-            $url = sprintf($urlTemplate, $deposit['address']);
-            $response = file_get_contents($url);
-            $data = json_decode($response, true);
-            $balance = $data['balance'] ?? 0;
-
+            $balance = $this->checkAddressBalance($deposit['address']);
             if ($balance > 0) {
-                $balanceInZER = $balance / 100000000; // Átváltás Zatoshi-ról ZER-re
+                $balanceInZER = $balance / 100000000;
                 $updateStmt = $this->mysqli->prepare("UPDATE deposits SET amount = ?, status = 'Completed', updated_at = NOW() WHERE id = ?");
                 $updateStmt->bind_param("di", $balanceInZER, $deposit['id']);
                 $updateStmt->execute();
                 $updateStmt->close();
-                $this->creditUserDeposit($deposit['user_id'], $balanceInZER);
             } elseif (new DateTime($deposit['created_at']) < $threshold) {
-                $updateStmt = $this->mysqli->prepare("UPDATE deposits SET status = 'Rejected', updated_at = NOW() WHERE id = ?");
+                $updateStmt = $this->mysqli->prepare("DELETE FROM deposits WHERE id = ?");
                 $updateStmt->bind_param("i", $deposit['id']);
                 $updateStmt->execute();
                 $updateStmt->close();
+
+                $walletUpdateStmt = $this->mysqli->prepare("UPDATE wallet_addresses SET status = 'active' WHERE id = ?");
+                $walletUpdateStmt->bind_param("i", $deposit['wallet_id']);
+                $walletUpdateStmt->execute();
+                $walletUpdateStmt->close();
             }
         }
     }
@@ -133,17 +118,6 @@ class Deposit {
         $deposits = $result->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
         return $deposits;
-    }
-
-    public function creditUserDeposit($userId, $amount) {
-        $stmt = $this->mysqli->prepare("UPDATE users SET deposit = deposit + ? WHERE id = ?");
-        $stmt->bind_param("di", $amount, $userId);
-        if ($stmt->execute()) {
-            error_log("User ID $userId credited with $amount ZER");
-        } else {
-            error_log("Failed to credit user ID $userId with $amount ZER: " . $stmt->error);
-        }
-        $stmt->close();
     }
 
     public function checkAddressBalance($address) {
